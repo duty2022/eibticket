@@ -18,7 +18,19 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    console.log("Attempting login...");
+    const loginPromise = supabase.auth.signInWithPassword({ email, password });
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT_ERROR")), 10000));
+    let result;
+    try {
+      result = await Promise.race([loginPromise, timeoutPromise]);
+    } catch (e) {
+      console.error("Login error/timeout:", e);
+      setError("Error de conexión: Tiempo de espera agotado. Verificá las variables en Vercel.");
+      setLoading(false);
+      return;
+    }
+    const { data, error } = result;
 
     console.error("LOGIN_ERROR:", error);
     console.log("User data:", data);
