@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { deleteEvent } from './actions'
+import { deleteEvent } from '../actions'
 import { Trash2 } from 'lucide-react'
 
 export default function DeleteEventButton({ id }: { id: string }) {
