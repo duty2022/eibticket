@@ -40,7 +40,7 @@ export default function LoginPage() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Tikzet Login</h1>
         <form onSubmit={handleLogin} className="space-y-4 text-left">
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" requiree className="w-full px-4 py-3 border rounded-xl outline-none text-gray-900" />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required className="w-full px-4 py-3 border rounded-xl outline-none text-gray-900" />
           <button type="submit" disabled={loading} className="w-full py-3 border-blue-600 bg-blue-600 text-white font-bold rounded-xl shadow-lg">{loading ? 'Entrando...' : 'Ingresar'}</button>
         </form>
       </div>
