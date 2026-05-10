@@ -54,7 +54,7 @@ export default function QRScanner() {
           aspectRatio: 1.0
         },
         async (decodedText) => {
-          // Bloqueo estricto para evitar doble escaneo accidental
+          // BLOQUEO TOTAL DURANTE PROCESAMIENTO Y PAUSA
           if (cooldown || isLoading) return
 
           const code = decodedText.split('/validate/').pop() || decodedText
@@ -62,11 +62,10 @@ export default function QRScanner() {
           setCooldown(true)
           await validateTicket(code)
 
-          // 5 segundos de espera total antes de permitir el próximo
-          // para dar tiempo a ver el resultado y mover el celular
+          // PAUSA DE 5 SEGUNDOS para que el verde se quede pegado en pantalla
           setTimeout(() => {
             setCooldown(false)
-            setResult(null) 
+            setResult(null) // Recién después de 5 segundos se limpia la pantalla
           }, 5000)
         },
         undefined
@@ -96,13 +95,19 @@ export default function QRScanner() {
       })
 
       const data = await res.json()
-      setResult(data)
+      
+      // SOLO ACTUALIZAMOS EL RESULTADO SI NO TENEMOS UNO YA MOSTRÁNDOSE
+      // Esto evita que el amarillo pise al verde si hubo un doble escaneo
+      setResult((prev) => {
+        if (prev && prev.valid) return prev; // Si ya hay un verde, no lo cambies por nada
+        return data;
+      })
       
       // Vibración diferenciada
       if (data.valid && navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]) // Dos cortitos para OK
+        navigator.vibrate([100, 50, 100])
       } else if (!data.valid && navigator.vibrate) {
-        navigator.vibrate(400) // Uno largo para ERROR
+        navigator.vibrate(400)
       }
     } catch (err) {
       setResult({
@@ -116,72 +121,77 @@ export default function QRScanner() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 p-4">
-      <div className="relative w-full max-w-sm aspect-square bg-black rounded-3xl overflow-hidden border-4 border-gray-800 shadow-2xl">
+    <div className="flex flex-col items-center gap-6 p-4 max-w-lg mx-auto">
+      {/* VISOR DE CÁMARA */}
+      <div className="relative w-full aspect-square bg-black rounded-[40px] overflow-hidden border-8 border-gray-800 shadow-2xl">
         <div id="qr-reader" className="w-full h-full object-cover" />
         
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-20">
-            <div className="flex flex-col items-center gap-2">
-              <RefreshCw className="w-12 h-12 text-white animate-spin" />
-              <p className="text-white font-bold text-xs">VALIDANDO...</p>
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-md z-30">
+            <RefreshCw className="w-16 h-16 text-white animate-spin" />
           </div>
         )}
 
-        {cooldown && !isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/20 z-10 pointer-events-none">
-             {/* Overlay visual para indicar que está en pausa */}
-          </div>
-        )}
+        {/* Marco visual de escaneo */}
+        <div className="absolute inset-0 border-[40px] border-black/20 pointer-events-none">
+          <div className="w-full h-full border-4 border-white/30 rounded-2xl" />
+        </div>
       </div>
 
-      <div className="w-full max-w-sm">
+      <div className="w-full">
         {!scanning ? (
-          <button onClick={startScanner} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xl shadow-xl">
-            ABRIR CÁMARA
+          <button onClick={startScanner} className="w-full py-6 bg-blue-600 text-white rounded-3xl font-black text-2xl shadow-xl active:scale-95 transition-all">
+            ACTIVAR ESCÁNER
           </button>
         ) : (
-          <button onClick={stopScanner} className="w-full py-5 bg-red-500 text-white rounded-2xl font-black text-xl shadow-xl">
+          <button onClick={stopScanner} className="w-full py-6 bg-red-500/10 text-red-500 border-2 border-red-500 rounded-3xl font-bold text-xl">
             DETENER
           </button>
         )}
       </div>
 
+      {/* RESULTADO GIGANTE Y PERSISTENTE */}
       {result && (
-        <div className={`w-full max-w-sm p-6 rounded-3xl border-[6px] shadow-2xl animate-in zoom-in duration-200 ${
+        <div className={`w-full p-8 rounded-[35px] border-[8px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in slide-in-from-bottom-10 duration-300 ${
           result.valid 
-            ? 'bg-green-100 border-green-600' 
+            ? 'bg-green-500 border-green-200' 
             : result.status === 'already_used'
-            ? 'bg-amber-100 border-amber-600'
-            : 'bg-red-100 border-red-600'
+            ? 'bg-amber-500 border-amber-100'
+            : 'bg-red-500 border-red-100'
         }`}>
-          <div className="flex items-center gap-4 mb-4">
-            {result.valid ? <CheckCircle2 className="w-12 h-12 text-green-600" /> : <AlertTriangle className={`w-12 h-12 ${result.status === 'already_used' ? 'text-amber-600' : 'text-red-600'}`} />}
-            <h3 className={`text-2xl font-black leading-tight ${result.valid ? 'text-green-900' : 'text-amber-900'}`}>
+          <div className="flex flex-col items-center text-center gap-4">
+            {result.valid ? (
+              <CheckCircle2 className="w-24 h-24 text-white animate-bounce" />
+            ) : (
+              <AlertTriangle className="w-24 h-24 text-white" />
+            )}
+            
+            <h3 className="text-4xl font-black text-white leading-tight uppercase tracking-tighter">
               {result.message}
             </h3>
-          </div>
 
-          {result.ticket && (
-            <div className="bg-white/80 p-4 rounded-2xl border border-black/5">
-              <p className="text-xs font-bold text-gray-500 uppercase">Asistente</p>
-              <p className="text-2xl font-black text-gray-900 mb-2">{result.ticket.attendee_name}</p>
-              <div className="flex justify-between items-end border-t border-black/5 pt-2">
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase">Tipo</p>
-                  <p className="text-base font-bold text-gray-800">{result.ticket.ticket_type}</p>
+            {result.ticket && (
+              <div className="w-full bg-white/20 backdrop-blur-md mt-4 p-6 rounded-2xl border border-white/30">
+                <p className="text-white/80 font-bold uppercase text-sm mb-1">Asistente</p>
+                <p className="text-3xl font-black text-white truncate w-full">{result.ticket.attendee_name}</p>
+                
+                <div className="mt-4 pt-4 border-t border-white/20 flex justify-between items-center">
+                   <span className="bg-white text-gray-900 px-4 py-1 rounded-full font-black text-sm uppercase">
+                     {result.ticket.ticket_type}
+                   </span>
+                   {result.valid && <span className="text-white font-black text-2xl">INGRESÓ!</span>}
                 </div>
-                {result.valid && <p className="text-sm font-black text-green-600 bg-green-200 px-3 py-1 rounded-full">OK</p>}
               </div>
-            </div>
-          )}
+            )}
 
-          {result.status === 'already_used' && (
-            <div className="mt-4 p-4 bg-amber-600 text-white rounded-2xl text-center">
-              <p className="text-sm font-bold uppercase">Ya ingresó: {new Date(result.validated_at!).toLocaleTimeString()}</p>
-            </div>
-          )}
+            {result.status === 'already_used' && (
+              <div className="w-full bg-black/20 p-4 rounded-2xl mt-2 border border-black/10">
+                <p className="text-white font-bold text-lg">
+                  YA ENTRÓ: {new Date(result.validated_at!).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} HS
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
