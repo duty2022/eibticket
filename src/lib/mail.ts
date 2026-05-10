@@ -1,7 +1,5 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 interface SendTicketEmailProps {
   to: string;
   buyerName: string;
@@ -10,6 +8,15 @@ interface SendTicketEmailProps {
 }
 
 export async function sendTicketEmail({ to, buyerName, eventName, ticketUrl }: SendTicketEmailProps) {
+  const apiKey = process.env.RESEND_API_KEY;
+  
+  if (!apiKey) {
+    console.error('RESEND_API_KEY is not defined in environment variables');
+    return { success: false, error: 'Configuración de correo faltante' };
+  }
+
+  const resend = new Resend(apiKey);
+
   try {
     const { data, error } = await resend.emails.send({
       from: 'EIB Ticket <noreply@resend.dev>',
