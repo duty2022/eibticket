@@ -100,10 +100,29 @@ export default function EventForm({ initialData, eventId }: Props) {
         organizerId = organizer?.id
       }
 
-      // Si no hay sesión (Bypass), buscamos el primer organizador disponible (Douglas)
+      // Si no hay sesión (Bypass), intentamos obtener o CREAR el organizador para Douglas
       if (!organizerId) {
-        const { data: allOrganizers } = await supabase.from('organizers').select('id').limit(1)
-        organizerId = allOrganizers?.[0]?.id
+        const { data: existing } = await supabase.from('organizers').select('id').limit(1)
+        if (existing && existing.length > 0) {
+          organizerId = existing[0].id
+        } else {
+          // Si no hay nada, creamos el perfil de Douglas de prepo
+          const { data: newOrg, error: createError } = await supabase
+            .from('organizers')
+            .insert([{ 
+              name: 'Douglas', 
+              email: 'eidarte@hotmail.com'
+            }])
+            .select()
+            .single()
+          
+          if (createError) {
+            console.error('Error creando organizador:', createError)
+            // Fallback: si falla por RLS, no hay mucho que hacer sin service role real, 
+            // pero intentemos seguir adelante.
+          }
+          organizerId = newOrg?.id
+        }
       }
 
       const eventData = {
