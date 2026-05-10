@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendTicketEmail } from '@/lib/mail'
 
 export const dynamic = "force-dynamic"
 
@@ -12,7 +13,7 @@ export async function POST(
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select('*, ticket_types(*)')
+      .select('*, ticket_types(*, events(*))')
       .eq('id', orderId)
       .single()
 
@@ -38,11 +39,27 @@ export async function POST(
 
     if (updateTicketsError) throw updateTicketsError
 
+    const { data: tickets } = await supabaseAdmin
+      .from('tickets')
+      .select('id')
+      .eq('order_id', orderId)
+
     const currentSold = order.ticket_types?.sold || 0
     await supabaseAdmin
       .from('ticket_types')
       .update({ sold: currentSold + order.quantity })
       .eq('id', order.ticket_type_id)
+
+    // Enviar email
+    if (tickets && tickets.length > 0) {
+      const ticketUrl = `https://eibticket.vercel.app/ticket/${tickets[0].id}`
+      await sendTicketEmail({
+        to: order.buyer_email,
+        buyerName: order.buyer_name,
+        eventName: order.ticket_types.events.name,
+        ticketUrl: ticketUrl
+      })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
