@@ -1,9 +1,10 @@
-export const dynamic = "force-dynamic"
 import { supabaseAdmin } from '@/lib/supabase'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Plus, CalendarDays, MapPin, Users } from 'lucide-react'
+
+export const revalidate = 0
 
 async function getEvents() {
   const { data } = await supabaseAdmin
@@ -72,7 +73,7 @@ export default async function EventosPage() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb%1">
+                  <div className="flex items-start justify-between gap-2 mb-1">
                     <h2 className="font-bold text-gray-900 truncate">{event.title}</h2>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${status.color}`}>
                       {status.label}
