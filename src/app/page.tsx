@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale'
 import { MapPin, Calendar, Ticket } from 'lucide-react'
 
 // Forzar renderizado dinámico para evitar errores de Supabase Key en el build
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
 async function getPublishedEvents(): Promise<Event[]> {
   try {
