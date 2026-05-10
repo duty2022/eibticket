@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
+    console.log("Supabase URL configured:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "YES" : "NO");
     e.preventDefault()
     setLoading(true)
     setError(null)
