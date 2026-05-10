@@ -1,96 +1,76 @@
-// Final attempt 3:13
-// Force rebuild 3:09
 'use client'
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Ticket, Eye, EyeOff } from 'lucide-react'
+import { Ticket } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Login attempt started for:', email)
     setLoading(true)
     setError(null)
 
     try {
+      // 1. Intentar login
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
       
       if (authError) {
-        console.error('Auth error:', authError)
         setError(authError.message)
         setLoading(false)
         return
       }
 
-      console.log('Auth success, user:', data.user?.email)
-      
-      // Redirect based on email or metadata
+      // 2. Si entra, forzar redirección
       const isAdmin = data.user?.email === 'eidarte@hotmail.com'
-      const target = isAdmin ? '/admin' : '/scanner'
+      window.location.href = isAdmin ? '/admin' : '/scanner'
       
-      console.log('Redirecting to:', target)
-      window.location.assign(target)
     } catch (err: any) {
-      console.error('Unexpected error:', err)
-      setError('Error inesperado. Ver consola.')
+      setError('Error de conexión con el servidor')
       setLoading(false)
     }
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4">
-            <Ticket className="w-7 h-7 text-white" />
+    <main className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md">
+        <div className="flex flex-col items-center mb-8">
+          <div className="bg-blue-600 p-3 rounded-2xl mb-4">
+            <Ticket className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Tikzet</h1>
-          <p className="text-gray-500 text-sm mt-1">Admin Panel</p>
+          <h1 className="text-2xl font-bold text-gray-900">Tikzet Login</h1>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
               placeholder="tu@email.com"
               required
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
+              placeholder="••••••••"
+              required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Contraseña</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 pr-11"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
               {error}
             </div>
           )}
@@ -98,9 +78,9 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 transition"
+            className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all"
           >
-            {loading ? 'Cargando...' : 'Ingresar'}
+            {loading ? 'Verificando...' : 'Ingresar'}
           </button>
         </form>
       </div>
