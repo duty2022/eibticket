@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 import CreateUserForm from './CreateUserForm'
 import { supabaseAdmin } from '@/lib/supabase'
 
