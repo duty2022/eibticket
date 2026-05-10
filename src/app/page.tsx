@@ -5,15 +5,23 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { MapPin, Calendar, Ticket } from 'lucide-react'
 
-async function getPublishedEvents(): Promise<Event[]> {
-  const { data } = await supabaseAdmin
-    .from('events')
-    .select('*, ticket_types(*), country:countries(*)')
-    .eq('status', 'published')
-    .gte('starts_at', new Date().toISOString())
-    .order('starts_at', { ascending: true })
+// Forzar renderizado dinámico para evitar errores de Supabase Key en el build
+export const dynamic = 'force-dynamic'
 
-  return data || []
+async function getPublishedEvents(): Promise<Event[]> {
+  try {
+    const { data } = await supabaseAdmin
+      .from('events')
+      .select('*, ticket_types(*), country:countries(*)')
+      .eq('status', 'published')
+      .gte('starts_at', new Date().toISOString())
+      .order('starts_at', { ascending: true })
+
+    return data || []
+  } catch (error) {
+    console.error('Error fetching events:', error)
+    return []
+  }
 }
 
 export default async function HomePage() {
