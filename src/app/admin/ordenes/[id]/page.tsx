@@ -1,11 +1,14 @@
 export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 import { supabaseAdmin } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import OrderActions from './OrderActions'
-import { ArrowLeft, User, Mail, Phone, Calendar, Ticket, MessageCircle } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, Calendar, Ticket, MessageCircle, RefreshCcw } from 'lucide-react'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 
 async function getOrder(id: string) {
   const { data } = await supabaseAdmin
@@ -25,6 +28,7 @@ const statusMap: Record<string, { label: string; color: string }> = {
 }
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
+  headers(); // Forzar no-cache
   const order = await getOrder(params.id)
   if (!order) notFound()
 
@@ -32,11 +36,14 @@ export default async function OrderDetailPage({ params }: { params: { id: string
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 pb-10">
-      {/* Volver */}
-      <Link href="/admin/ordenes" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
-        <ArrowLeft className="w-4 h-4" />
-        Volver a órdenes
-      </Link>
+      {/* Volver y Versión */}
+      <div className="flex justify-between items-center">
+        <Link href="/admin/ordenes" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
+          <ArrowLeft className="w-4 h-4" />
+          Volver a órdenes
+        </Link>
+        <span className="text-[10px] text-gray-300 font-mono italic">v1.2-ws</span>
+      </div>
 
       {/* Estado */}
       <div className={`border rounded-2xl px-5 py-4 ${status.color}`}>
@@ -129,11 +136,11 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               const whatsappText = encodeURIComponent(
                 `¡Hola ${order.buyer_name}! 👋 Acá tenés tu ticket para *${order.event?.title}*.\n\nPuedes verlo y descargar el QR aquí:\n${ticketUrl}`
               )
-              const whatsappUrl = `https://wa.me/${order.buyer_phone?.replace(/\+/g, '')}?text=${whatsappText}`
+              const whatsappUrl = `https://wa.me/${order.buyer_phone?.replace(/\D/g, '')}?text=${whatsappText}`
 
               return (
                 <div key={ticket.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 last:pb-0">
-                  <div className="min-w-0 flex-1 pr-4">
+                  <div className="min-w-0 flex-1 pr-4 text-left">
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="text-sm font-bold text-gray-800 truncate">{ticket.attendee_name}</p>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
@@ -152,10 +159,10 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                     <a 
                       href={whatsappUrl}
                       target="_blank"
-                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-bold transition shadow-md active:scale-95"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      Enviar
+                      WhatsApp
                     </a>
                   )}
                 </div>
