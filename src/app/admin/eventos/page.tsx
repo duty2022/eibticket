@@ -10,7 +10,7 @@ async function getEvents() {
   const { data } = await supabaseAdmin
     .from('events')
     .select('*, ticket_types(*)')
-    .order('starts_at', { ascending: false })
+    .order('created_at', { ascending: false })
   return data || []
 }
 
