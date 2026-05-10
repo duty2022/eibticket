@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { CalendarDays, MapPin, Users, ArrowLeft, ExternalLink, Ticket } from 'lucide-react'
+import DeleteEventButton from './DeleteEventButton'
 
 async function getEvent(id: string) {
   const { data } = await supabaseAdmin
@@ -31,14 +32,17 @@ export default async function EventoDetailPage({ params }: { params: { id: strin
           <ArrowLeft className="w-4 h-4" />
           Volver a eventos
         </Link>
-        <Link 
-          href={`/eventos/${event.id}`}
-          target="_blank"
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition text-sm font-semibold"
-        >
-          Ver página pública
-          <ExternalLink className="w-4 h-4" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <DeleteEventButton id={event.id} />
+          <Link 
+            href={`/eventos/${event.id}`}
+            target="_blank"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition text-sm"
+          >
+            Ver página pública
+            <ExternalLink className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
