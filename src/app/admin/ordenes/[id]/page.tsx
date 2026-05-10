@@ -14,6 +14,7 @@ async function getOrder(id: string) {
   const { data } = await supabaseAdmin
     .from('orders')
     .select('*, event:events(title, starts_at, location), ticket_type:ticket_types(name), tickets(*)')
+    .eq(id.length === 8 ? 'id' : 'id', id) // Placeholder for flexibility
     .eq('id', id)
     .single()
   return data
@@ -42,7 +43,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           <ArrowLeft className="w-4 h-4" />
           Volver
         </Link>
-        <span className="text-[10px] text-gray-300 font-mono italic">v1.3-ws</span>
+        <span className="text-[10px] text-gray-300 font-mono italic">v1.4-ws</span>
       </div>
 
       {/* Estado */}
@@ -96,20 +97,6 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         </div>
       </div>
 
-      {/* Comprobante */}
-      {order.receipt_url && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h2 className="font-bold text-gray-900 text-sm uppercase tracking-tight mb-3">Comprobante</h2>
-          <a href={order.receipt_url} target="_blank" rel="noopener noreferrer">
-            <img
-              src={order.receipt_url}
-              alt="Comprobante"
-              className="w-full rounded-xl border border-gray-100 max-h-60 object-contain bg-gray-50"
-            />
-          </a>
-        </div>
-      )}
-
       {/* QR tickets generados */}
       {order.tickets?.some((t: any) => t.status === 'valid' || t.status === 'used') && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -121,13 +108,17 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 `¡Hola ${order.buyer_name}! 👋 Acá tenés tu ticket para *${order.event?.title}*.\n\nPuedes verlo y descargar el QR aquí:\n${ticketUrl}`
               )
               const whatsappUrl = `https://wa.me/${order.buyer_phone?.replace(/\D/g, '')}?text=${whatsappText}`
+              
+              // Usar generador de QR más confiable
+              const qrData = `https://eibticket.vercel.app/validate/${ticket.qr_code}`
+              const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`
 
               return (
                 <div key={ticket.id} className="flex flex-col sm:flex-row items-center gap-4 py-4 border-b border-gray-50 last:border-0 last:pb-0">
                   {/* Imagen del QR */}
-                  <div className="bg-gray-50 p-2 rounded-xl border border-gray-100">
+                  <div className="bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
                     <img 
-                      src={ticket.qr_url} 
+                      src={qrImageUrl} 
                       alt="QR" 
                       className="w-32 h-32"
                     />
@@ -167,6 +158,20 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Comprobante */}
+      {order.receipt_url && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h2 className="font-bold text-gray-900 text-sm uppercase tracking-tight mb-3">Comprobante</h2>
+          <a href={order.receipt_url} target="_blank" rel="noopener noreferrer">
+            <img
+              src={order.receipt_url}
+              alt="Comprobante"
+              className="w-full rounded-xl border border-gray-100 max-h-60 object-contain bg-gray-50"
+            />
+          </a>
         </div>
       )}
 
