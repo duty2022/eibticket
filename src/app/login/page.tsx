@@ -18,40 +18,31 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    console.log("Attempting login...");
-    const loginPromise = supabase.auth.signInWithPassword({ email, password });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT_ERROR")), 10000));
-    let result;
     try {
-      result = await Promise.race([loginPromise, timeoutPromise]);
-    } catch (e) {
-      console.error("Login error/timeout:", e);
-      setError("Error de conexión: Tiempo de espera agotado. Verificá las variables en Vercel.");
-      setLoading(false);
-      return;
-    }
-    const { data, error } = result as { data: any, error: any };
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
-    console.error("LOGIN_ERROR:", error);
-    console.log("User data:", data);
-    if (error) {
-      setError(error.message)
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      const role = data.user?.email === 'eidarte@hotmail.com' ? 'admin' : data.user?.user_metadata?.role
+      if (role === 'scanner') {
+        router.push('/scanner')
+      } else {
+        router.push('/admin')
+      }
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError('Error al intentar ingresar. Por favor, verificá tu conexión.')
       setLoading(false)
-      return
-    }
-
-    const role = data.user?.email === "eidarte@hotmail.com" ? "admin" : data.user?.user_metadata?.role
-    if (role === 'scanner') {
-      router.push('/scanner')
-    } else {
-      router.push('/admin')
     }
   }
 
   return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4">
             <Ticket className="w-7 h-7 text-white" />
@@ -60,12 +51,9 @@ export default function LoginPage() {
           <p className="text-gray-500 text-sm mt-1">Panel de administración</p>
         </div>
 
-        {/* Formulario */}
         <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Email
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
             <input
               type="email"
               value={email}
@@ -77,9 +65,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Contraseña
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Contraseña</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
