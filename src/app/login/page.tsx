@@ -30,7 +30,7 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    const { data, error } = result;
+    const { data, error } = result as { data: any, error: any };
 
     console.error("LOGIN_ERROR:", error);
     console.log("User data:", data);
