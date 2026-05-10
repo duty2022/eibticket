@@ -3,27 +3,41 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CalendarDays, MapPin, Users, ArrowLeft, ExternalLink, Ticket } from 'lucide-react'
+import { CalendarDays, MapPin, Users, ArrowLeft, ExternalLink, Ticket, CheckCircle, ShoppingCart } from 'lucide-react'
 import DeleteEventButton from './DeleteEventButton'
 
-async function getEvent(id: string) {
-  const { data } = await supabaseAdmin
+async function getEventData(id: string) {
+  // 1. Obtener datos básicos del evento y tipos de tickets
+  const { data: event } = await supabaseAdmin
     .from('events')
     .select('*, ticket_types(*)')
     .eq('id', id)
     .single()
-  return data
+
+  if (!event) return null
+
+  // 2. Contar tickets vendidos (ya los tenemos en ticket_types.sold, pero validemos contra la tabla tickets)
+  // 3. Contar tickets UTILIZADOS (status = 'used')
+  const { count: usedCount } = await supabaseAdmin
+    .from('tickets')
+    .select('*', { count: 'exact', head: true })
+    .eq('event_id', id)
+    .eq('status', 'used')
+
+  return { event, usedCount: usedCount || 0 }
 }
 
 export default async function EventoDetailPage({ params }: { params: { id: string } }) {
-  const event = await getEvent(params.id)
+  const data = await getEventData(params.id)
 
-  if (!event) {
+  if (!data) {
     notFound()
   }
 
+  const { event, usedCount } = data
   const totalSold = event.ticket_types?.reduce((s: number, t: any) => s + t.sold, 0) || 0
   const totalCap = event.ticket_types?.reduce((s: number, t: any) => s + t.capacity, 0) || 0
+  const attendanceRate = totalSold > 0 ? Math.round((usedCount / totalSold) * 100) : 0
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
@@ -49,48 +63,78 @@ export default async function EventoDetailPage({ params }: { params: { id: strin
         {event.banner_url && (
           <img src={event.banner_url} alt={event.title} className="w-full h-64 object-cover" />
         )}
-        <div className="p-8 space-y-6">
+        <div className="p-8 space-y-8">
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-gray-900">{event.title}</h1>
+            <div className="flex justify-between items-start">
+              <h1 className="text-3xl font-bold text-gray-900">{event.title}</h1>
+              <span className={`text-xs px-3 py-1 rounded-full font-black uppercase tracking-wider ${
+                event.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+              }`}>
+                {event.status}
+              </span>
+            </div>
             <div className="flex flex-wrap gap-4 text-gray-500">
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-5 h-5 text-blue-500" />
-                <span>{format(new Date(event.starts_at), "d 'de' MMMM yyyy, HH:mm", { locale: es })}</span>
+                <span className="font-medium">{format(new Date(event.starts_at), "d 'de' MMMM yyyy, HH:mm", { locale: es })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-blue-500" />
-                <span>{event.location}</span>
+                <span className="font-medium">{event.location}</span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-              <p className="text-blue-600 text-xs font-bold uppercase tracking-wider">Tickets Vendidos</p>
-              <p className="text-2xl font-bold text-blue-900 mt-1">{totalSold}</p>
+          {/* ESTADÍSTICAS REAL-TIME */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-[32px] border-2 border-blue-50 shadow-sm flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-3">
+                <ShoppingCart className="w-6 h-6 text-blue-600" />
+              </div>
+              <p className="text-gray-500 text-xs font-black uppercase tracking-widest">Vendidos</p>
+              <p className="text-4xl font-black text-gray-900 mt-1">{totalSold}</p>
+              <p className="text-[10px] text-gray-400 mt-1 font-bold">DE {totalCap} DISPONIBLES</p>
             </div>
-            <div className="bg-green-50 p-4 rounded-2xl border border-green-100">
-              <p className="text-green-600 text-xs font-bold uppercase tracking-wider">Capacidad Total</p>
-              <p className="text-2xl font-bold text-green-900 mt-1">{totalCap}</p>
+
+            <div className="bg-white p-6 rounded-[32px] border-2 border-green-50 shadow-sm flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center mb-3">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+              <p className="text-gray-500 text-xs font-black uppercase tracking-widest">Ingresados</p>
+              <p className="text-4xl font-black text-gray-900 mt-1">{usedCount}</p>
+              <p className="text-[10px] text-gray-400 mt-1 font-bold">{attendanceRate}% DE ASISTENCIA</p>
             </div>
-            <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100">
-              <p className="text-purple-600 text-xs font-bold uppercase tracking-wider">Status</p>
-              <p className="text-2xl font-bold text-purple-900 mt-1 capitalize">{event.status}</p>
+
+            <div className="bg-white p-6 rounded-[32px] border-2 border-purple-50 shadow-sm flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center mb-3">
+                <Users className="w-6 h-6 text-purple-600" />
+              </div>
+              <p className="text-gray-500 text-xs font-black uppercase tracking-widest">Ausentes</p>
+              <p className="text-4xl font-black text-gray-900 mt-1">{totalSold - usedCount}</p>
+              <p className="text-[10px] text-gray-400 mt-1 font-bold font-bold uppercase tracking-widest">Faltan llegar</p>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <h2 className="text-xl font-bold text-gray-900">Tickets</h2>
-            <div className="grid gap-3">
+          {/* DETALLE POR TIPO DE TICKET */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+              <Ticket className="w-5 h-5 text-blue-600" />
+              Detalle por Categoría
+            </h2>
+            <div className="grid gap-4">
               {event.ticket_types?.map((ticket: any) => (
-                <div key={ticket.id} className="border border-gray-100 rounded-2xl p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-gray-50 p-3 rounded-xl text-gray-400">
-                      <Ticket className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900">{ticket.name}</p>
-                      <p className="text-sm text-gray-500">${ticket.price} • {ticket.sold}/{ticket.capacity} vendidos</p>
+                <div key={ticket.id} className="bg-gray-50/50 border border-gray-100 rounded-2xl p-5 flex items-center justify-between">
+                  <div>
+                    <p className="font-black text-gray-900 text-lg">{ticket.name}</p>
+                    <p className="text-sm font-bold text-gray-500">Precio: ${ticket.price}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-gray-900">{ticket.sold} / {ticket.capacity}</p>
+                    <div className="w-32 h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-600 rounded-full" 
+                        style={{ width: `${(ticket.sold / ticket.capacity) * 100}%` }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -99,8 +143,8 @@ export default async function EventoDetailPage({ params }: { params: { id: strin
           </div>
 
           {event.description && (
-            <div className="space-y-3">
-              <h2 className="text-xl font-bold text-gray-900">Descripción</h2>
+            <div className="space-y-3 pt-6 border-t border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 uppercase text-xs tracking-widest text-gray-400">Sobre este evento</h2>
               <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{event.description}</p>
             </div>
           )}
