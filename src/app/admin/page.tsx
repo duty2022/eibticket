@@ -48,6 +48,13 @@ async function getRecentOrders() {
   }
 }
 
+const statusMap: any = {
+  pending: { label: 'Pendiente', color: 'bg-gray-100 text-gray-600' },
+  reviewing: { label: 'En Revisión', color: 'bg-amber-100 text-amber-600' },
+  approved: { label: 'Aprobada', color: 'bg-emerald-100 text-emerald-600' },
+  rejected: { label: 'Rechazada', color: 'bg-red-100 text-red-600' },
+}
+
 export default async function AdminDashboard() {
   const stats = await getDashboardStats()
   const recentOrders = await getRecentOrders()
@@ -58,13 +65,6 @@ export default async function AdminDashboard() {
     { label: 'Tickets Emitidos', value: stats.totalTickets, icon: Ticket, color: 'text-purple-600', bg: 'bg-purple-50' },
     { label: 'Ingresos Totales', value: stats.approvedOrders, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ]
-
-  const statusMap: any = {
-    pending: { label: 'Pendiente', color: 'bg-gray-100 text-gray-600' },
-    reviewing: { label: 'En Revisión', color: 'bg-amber-100 text-amber-600' },
-    approved: { label: 'Aprobada', color: 'bg-emerald-100 text-emerald-600' },
-    rejected: { label: 'Rechazada', color: 'bg-red-100 text-red-600' },
-  }
 
   return (
     <div className="space-y-8">
@@ -77,8 +77,8 @@ export default async function AdminDashboard() {
         {statCards.map((stat) => (
           <div key={stat.label} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className={}>
-                <stat.icon className={} />
+              <div className={`p-2 rounded-xl ${stat.bg}`}>
+                <stat.icon className={`w-6 h-6 ${stat.color}`} />
               </div>
             </div>
             <p className="text-sm font-medium text-gray-500">{stat.label}</p>
@@ -98,10 +98,10 @@ export default async function AdminDashboard() {
           {recentOrders.length === 0 ? (
             <div className="p-12 text-center text-gray-500">No hay órdenes registradas</div>
           ) : (
-            recentOrders.map((order) => (
+            recentOrders.map((order: any) => (
               <Link
                 key={order.id}
-                href={}
+                href={`/admin/ordenes/${order.id}`}
                 className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition"
               >
                 <div>
@@ -109,8 +109,8 @@ export default async function AdminDashboard() {
                   <p className="text-sm text-gray-500">{order.event?.title} · {order.ticket_type?.name}</p>
                 </div>
                 <div className="text-right">
-                  <span className={}>
-                    {statusMap[order.status]?.label}
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusMap[order.status]?.color || 'bg-gray-100'}`}>
+                    {statusMap[order.status]?.label || order.status}
                   </span>
                   <p className="text-xs text-gray-400 mt-1">
                     {new Date(order.created_at).toLocaleDateString('es')}
