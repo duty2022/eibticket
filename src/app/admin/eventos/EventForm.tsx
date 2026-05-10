@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { supabase } from '@/lib/supabase'
 import { Plus, Trash2, Upload } from 'lucide-react'
-import { createEventWithBypass } from './actions'
 
 const ticketTypeSchema = z.object({
   name: z.string().min(1, 'Requerido'),
@@ -25,6 +24,7 @@ const schema = z.object({
   ends_at: z.string().optional(),
   country_id: z.enum(['AR', 'MX', 'CR', 'PY']),
   status: z.enum(['draft', 'published']),
+  // Datos de pago opcionales por evento (si se dejan vacíos, usa el default del país)
   payment_label: z.string().optional(),
   payment_instructions: z.string().optional(),
   payment_holder: z.string().optional(),
@@ -70,6 +70,7 @@ export default function EventForm({ initialData, eventId }: Props) {
   }
 
   const uploadBanner = async (file: File): Promise<string | null> => {
+    const { data: { session } } = await supabase.auth.getSession()
     const path = `banners/${Date.now()}-${file.name}`
     const { error } = await supabase.storage.from('tikzet').upload(path, file, { upsert: true })
     if (error) return null
@@ -87,6 +88,19 @@ export default function EventForm({ initialData, eventId }: Props) {
         banner_url = await uploadBanner(bannerFile)
       }
 
+      const { data: { session } } = await supabase.auth.getSession()
+
+      // Obtener organizer_id del usuario actual
+      const { data: organizer, error: organizerError } = await supabase
+        .from('organizers')
+        .select('id')
+        .eq('user_id', session?.user.id)
+        .single()
+
+      if (organizerError || !organizer) {
+        throw new Error('No tienes un perfil de organizador vinculado. Por favor, contacta a soporte.')
+      }
+
       const eventData = {
         title: data.title,
         description: data.description,
@@ -97,21 +111,40 @@ export default function EventForm({ initialData, eventId }: Props) {
         country_id: data.country_id,
         status: data.status,
         banner_url,
-        payment_label: data.payment_label || null,
+        organizer_id: organizer?.id,
+        // Datos de pago opcionales por evento
+        payment_label:        data.payment_label        || null,
         payment_instructions: data.payment_instructions || null,
-        payment_holder: data.payment_holder || null,
+        payment_holder:       data.payment_holder       || null,
       }
 
-      const ticketTypes = data.ticket_types.map(tt => ({
-        ...tt,
-        sold: 0
-      }))
+      let savedEventId = eventId
 
-      const res = await createEventWithBypass(eventData, ticketTypes)
+      if (eventId) {
+        // Editar
+        await supabase.from('events').update(eventData).eq('id', eventId)
+        // Eliminar tipos anteriores y reinsertar
+        await supabase.from('ticket_types').delete().eq('event_id', eventId)
+      } else {
+        // Crear
+        const { data: newEvent, error: eventError } = await supabase
+          .from('events')
+          .insert(eventData)
+          .select()
+          .single()
 
-      if (!res.success) {
-        throw new Error(res.error)
+        if (eventError || !newEvent) throw new Error('Error al crear el evento')
+        savedEventId = newEvent.id
       }
+
+      // Insertar tipos de ticket
+      await supabase.from('ticket_types').insert(
+        data.ticket_types.map(tt => ({
+          ...tt,
+          event_id: savedEventId,
+          sold: 0,
+        }))
+      )
 
       router.push('/admin/eventos')
       router.refresh()
@@ -124,6 +157,7 @@ export default function EventForm({ initialData, eventId }: Props) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Banner */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
         <h2 className="font-bold text-gray-900">Imagen del evento</h2>
         {bannerPreview && (
@@ -136,37 +170,76 @@ export default function EventForm({ initialData, eventId }: Props) {
         </label>
       </div>
 
+      {/* Datos generales */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
         <h2 className="font-bold text-gray-900">Información del evento</h2>
+
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1.5">Título *</label>
-          <input {...register('title')} placeholder="Ej: Encuentro Nacional de Baile" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" />
+          <input
+            {...register('title')}
+            placeholder="Ej: Encuentro Nacional de Baile Movimiento 60+"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          />
           {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
         </div>
+
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1.5">Descripción</label>
-          <textarea {...register('description')} rows={4} placeholder="Descripción del evento..." className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 resize-none" />
+          <textarea
+            {...register('description')}
+            rows={4}
+            placeholder="Descripción del evento, artistas, programa..."
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 resize-none"
+          />
         </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Fecha y hora *</label>
-            <input {...register('starts_at')} type="datetime-local" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" />
+            <input
+              {...register('starts_at')}
+              type="datetime-local"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            />
             {errors.starts_at && <p className="text-red-500 text-xs mt-1">{errors.starts_at.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Fin (opcional)</label>
-            <input {...register('ends_at')} type="datetime-local" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" />
+            <input
+              {...register('ends_at')}
+              type="datetime-local"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            />
           </div>
         </div>
+
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1.5">Lugar *</label>
-          <input {...register('location')} placeholder="Ej: Club Atlético Santa Fe" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" />
+          <input
+            {...register('location')}
+            placeholder="Ej: Club Atlético Santa Fe"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          />
           {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location.message}</p>}
         </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Dirección (opcional)</label>
+          <input
+            {...register('address')}
+            placeholder="Ej: Av. San Martín 1234"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">País</label>
-            <select {...register('country_id')} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white">
+            <select
+              {...register('country_id')}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+            >
               <option value="AR">🇦🇷 Argentina</option>
               <option value="MX">🇲🇽 México</option>
               <option value="CR">🇨🇷 Costa Rica</option>
@@ -175,7 +248,10 @@ export default function EventForm({ initialData, eventId }: Props) {
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Estado</label>
-            <select {...register('status')} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white">
+            <select
+              {...register('status')}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+            >
               <option value="draft">Borrador</option>
               <option value="published">Publicado</option>
             </select>
@@ -183,34 +259,128 @@ export default function EventForm({ initialData, eventId }: Props) {
         </div>
       </div>
 
+      {/* Datos de pago específicos del evento (opcional) */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-        <h2 className="font-bold text-gray-900">Datos de pago</h2>
-        <input {...register('payment_label')} placeholder="Alias, CBU, etc." className="w-full px-4 py-3 border border-gray-200 rounded-xl" />
-        <input {...register('payment_instructions')} placeholder="Dato de transferencia" className="w-full px-4 py-3 border border-gray-200 rounded-xl" />
-        <input {...register('payment_holder')} placeholder="Titular" className="w-full px-4 py-3 border border-gray-200 rounded-xl" />
+        <div>
+          <h2 className="font-bold text-gray-900">Datos de pago del evento</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Opcional. Si lo dejás vacío, se usan los datos de pago configurados para el país.
+          </p>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+            Tipo de pago <span className="text-gray-400 font-normal">(ej: Alias CBU, CLABE, SINPE Móvil)</span>
+          </label>
+          <input
+            {...register('payment_label')}
+            placeholder="Dejar vacío para usar el default del país"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+            Dato de transferencia <span className="text-gray-400 font-normal">(alias, número, CLABE)</span>
+          </label>
+          <input
+            {...register('payment_instructions')}
+            placeholder="Dejar vacío para usar el default del país"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Titular de la cuenta</label>
+          <input
+            {...register('payment_holder')}
+            placeholder="Dejar vacío para usar el default del país"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+          />
+        </div>
       </div>
 
+      {/* Tipos de ticket */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-bold text-gray-900">Tickets</h2>
-          <button type="button" onClick={() => append({ name: '', price: 0, capacity: 50 })} className="text-blue-600 font-medium">+ Agregar</button>
+          <h2 className="font-bold text-gray-900">Tipos de ticket</h2>
+          <button
+            type="button"
+            onClick={() => append({ name: '', price: 0, capacity: 50 })}
+            className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:text-blue-700"
+          >
+            <Plus className="w-4 h-4" />
+            Agregar tipo
+          </button>
         </div>
+
         {fields.map((field, index) => (
           <div key={field.id} className="border border-gray-200 rounded-xl p-4 space-y-3">
-            <input {...register(`ticket_types.${index}.name`)} placeholder="Nombre" className="w-full px-3 py-2 border border-gray-200 rounded-xl" />
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-700">Tipo {index + 1}</p>
+              {fields.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => remove(index)}
+                  className="text-red-400 hover:text-red-600 transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
-              <input {...register(`ticket_types.${index}.price`, { valueAsNumber: true })} type="number" placeholder="Precio" className="w-full px-3 py-2 border border-gray-200 rounded-xl" />
-              <input {...register(`ticket_types.${index}.capacity`, { valueAsNumber: true })} type="number" placeholder="Cupo" className="w-full px-3 py-2 border border-gray-200 rounded-xl" />
+              <div className="col-span-2">
+                <input
+                  {...register(`ticket_types.${index}.name`)}
+                  placeholder="Nombre (ej: General, VIP)"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <input
+                  {...register(`ticket_types.${index}.price`, { valueAsNumber: true })}
+                  type="number"
+                  min="0"
+                  placeholder="Precio"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <input
+                  {...register(`ticket_types.${index}.capacity`, { valueAsNumber: true })}
+                  type="number"
+                  min="1"
+                  placeholder="Capacidad"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="col-span-2">
+                <input
+                  {...register(`ticket_types.${index}.description`)}
+                  placeholder="Descripción (opcional)"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
           </div>
         ))}
+        {errors.ticket_types && (
+          <p className="text-red-500 text-xs">{errors.ticket_types.message}</p>
+        )}
       </div>
 
-      {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm">{error}</div>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+          {error}
+        </div>
+      )}
 
-      <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 transition">
-        {loading ? 'Guardando...' : eventId ? 'Guardar cambios' : 'Crear evento'}
-      </button>
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex-1 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 transition"
+        >
+          {loading ? 'Guardando...' : eventId ? 'Guardar cambios' : 'Crear evento'}
+        </button>
+      </div>
     </form>
   )
 }
