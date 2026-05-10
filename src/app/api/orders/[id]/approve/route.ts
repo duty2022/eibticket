@@ -11,9 +11,10 @@ export async function POST(
   try {
     const orderId = params.id
 
+    // 1. Obtener la orden con tickets y detalles del evento
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select('*, ticket_types(*, events(*))')
+      .select('*, tickets(*), ticket_types(*, events(*))')
       .eq('id', orderId)
       .single()
 
@@ -25,6 +26,7 @@ export async function POST(
       return NextResponse.json({ error: 'La orden ya está aprobada' }, { status: 400 })
     }
 
+    // 2. Actualizar estado de la orden
     const { error: updateOrderError } = await supabaseAdmin
       .from('orders')
       .update({ status: 'approved' })
@@ -32,27 +34,36 @@ export async function POST(
 
     if (updateOrderError) throw updateOrderError
 
-    const { error: updateTicketsError } = await supabaseAdmin
-      .from('tickets')
-      .update({ status: 'valid' })
-      .eq('order_id', orderId)
+    // 3. Generar QRs y activar tickets
+    const tickets = order.tickets || []
+    for (const ticket of tickets) {
+      const qrCode = ticket.qr_code
+      // La URL de validación que el personal de puerta va a escanear
+      const validationUrl = `https://eibticket.vercel.app/validate/${qrCode}`
+      // Generamos el QR usando Google Charts
+      const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=400x400&chl=${encodeURIComponent(validationUrl)}`
+      
+      await supabaseAdmin
+        .from('tickets')
+        .update({ 
+          status: 'valid',
+          qr_url: qrUrl 
+        })
+        .eq('id', ticket.id)
+    }
 
-    if (updateTicketsError) throw updateTicketsError
-
-    const { data: tickets } = await supabaseAdmin
-      .from('tickets')
-      .select('id')
-      .eq('order_id', orderId)
-
+    // 4. Actualizar contador de vendidos
     const currentSold = order.ticket_types?.sold || 0
     await supabaseAdmin
       .from('ticket_types')
       .update({ sold: currentSold + order.quantity })
       .eq('id', order.ticket_type_id)
 
-    // Enviar email
-    if (tickets && tickets.length > 0) {
-      const ticketUrl = `https://eibticket.vercel.app/ticket/${tickets[0].id}`
+    // 5. Enviar email al comprador
+    if (tickets.length > 0) {
+      // Usamos el qr_code del primer ticket para el link principal
+      const ticketUrl = `https://eibticket.vercel.app/ticket/${tickets[0].qr_code}`
+      
       await sendTicketEmail({
         to: order.buyer_email,
         buyerName: order.buyer_name,
