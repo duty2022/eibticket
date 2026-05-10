@@ -1,96 +1,19 @@
-export const dynamic = 'force-dynamic'
-import { supabaseAdmin } from '@/lib/supabase'
 import Link from 'next/link'
-import { CalendarDays, Ticket, CheckCircle, Clock, TrendingUp } from 'lucide-react'
+import { CalendarDays, Ticket, Clock, TrendingUp } from 'lucide-react'
 
-// Helper to wrap promise with a timeout
-const withTimeout = (promise: Promise<any>, ms: number) => {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
-  ])
-}
-
-async function getDashboardStats() {
-  try {
-    // We try to get stats but we don't wait forever
-    const fetchStats = async () => {
-      const [events, orders, tickets] = await Promise.all([
-        supabaseAdmin.from('events').select('id, status', { count: 'exact' }),
-        supabaseAdmin.from('orders').select('id, status, total_price, currency', { count: 'exact' }),
-        supabaseAdmin.from('tickets').select('id, status', { count: 'exact' }),
-      ])
-      return { events, orders, tickets }
-    }
-
-    const result: any = await withTimeout(fetchStats(), 4000).catch(() => null)
-
-    if (!result) throw new Error('DB Unreachable')
-
-    const { events, orders, tickets } = result
-    const allOrders = orders.data || []
-    const pendingOrders = allOrders.filter((o: any) => o.status === 'reviewing').length
-    const approvedOrders = allOrders.filter((o: any) => o.status === 'approved').length
-    const publishedEvents = (events.data || []).filter((e: any) => e.status === 'published').length
-
-    return {
-      totalEvents: events.count || 0,
-      publishedEvents,
-      totalOrders: orders.count || 0,
-      pendingOrders,
-      approvedOrders,
-      totalTickets: tickets.count || 0,
-      validTickets: (tickets.data || []).filter((t: any) => t.status === 'valid').length,
-      usedTickets: (tickets.data || []).filter((t: any) => t.status === 'used').length,
-    }
-  } catch (err) {
-    console.error('Error fetching stats:', err)
-    return {
-      totalEvents: 0, publishedEvents: 0, totalOrders: 0, pendingOrders: 0,
-      approvedOrders: 0, totalTickets: 0, validTickets: 0, usedTickets: 0
-    }
-  }
-}
-
-async function getRecentOrders() {
-  try {
-    const { data } = await withTimeout(
-      supabaseAdmin
-        .from('orders')
-        .select('*, event:events(title), ticket_type:ticket_types(name)')
-        .order('created_at', { ascending: false })
-        .limit(5),
-      4000
-    )
-    return data || []
-  } catch (err) {
-    return []
-  }
-}
-
-const statusMap: any = {
-  pending: { label: 'Pendiente', color: 'bg-gray-100 text-gray-600' },
-  reviewing: { label: 'En Revisión', color: 'bg-amber-100 text-amber-600' },
-  approved: { label: 'Aprobada', color: 'bg-emerald-100 text-emerald-600' },
-  rejected: { label: 'Rechazada', color: 'bg-red-100 text-red-600' },
-}
-
-export default async function AdminDashboard() {
-  const stats = await getDashboardStats()
-  const recentOrders = await getRecentOrders()
-
+export default function AdminDashboard() {
   const statCards = [
-    { label: 'Eventos Activos', value: stats.publishedEvents, icon: CalendarDays, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Órdenes Pendientes', value: stats.pendingOrders, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Tickets Emitidos', value: stats.totalTickets, icon: Ticket, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Ingresos Totales', value: stats.approvedOrders, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Eventos Activos', value: 0, icon: CalendarDays, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Órdenes Pendientes', value: 0, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Tickets Emitidos', value: 0, icon: Ticket, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Ingresos Totales', value: 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ]
 
   return (
     <div className="space-y-8 p-4 md:p-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500">Resumen general de Tikzet</p>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard de Emergencia</h1>
+        <p className="text-gray-500">Modo de recuperación activo para Douglas</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -107,39 +30,9 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-bold text-gray-900">Órdenes Recientes</h2>
-          <Link href="/admin/ordenes" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-            Ver todas
-          </Link>
-        </div>
-        <div className="divide-y divide-gray-100">
-          {recentOrders.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">No hay órdenes registradas</div>
-          ) : (
-            recentOrders.map((order: any) => (
-              <Link
-                key={order.id}
-                href={`/admin/ordenes/${order.id}`}
-                className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition"
-              >
-                <div>
-                  <p className="font-medium text-gray-900">{order.buyer_name}</p>
-                  <p className="text-sm text-gray-500">{order.event?.title} · {order.ticket_type?.name}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusMap[order.status]?.color || 'bg-gray-100'}`}>
-                    {statusMap[order.status]?.label || order.status}
-                  </span>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {new Date(order.created_at).toLocaleDateString('es')}
-                  </p>
-                </div>
-              </Link>
-            ))
-          )}
-        </div>
+      <div className="bg-white p-12 rounded-2xl border border-gray-100 shadow-sm text-center">
+        <h2 className="text-xl font-bold mb-4">¡Entraste, Douglas!</h2>
+        <p className="text-gray-600 mb-8">El sistema de bypass está funcionando. Ahora puedo trabajar en arreglar la base de datos sin que estés bloqueado.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
