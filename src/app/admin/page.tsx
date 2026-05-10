@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 import { supabaseAdmin } from '@/lib/supabase'
 import Link from 'next/link'
 import { CalendarDays, Ticket, CheckCircle, Clock, TrendingUp } from 'lucide-react'
