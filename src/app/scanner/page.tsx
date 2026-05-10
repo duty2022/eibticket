@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 import QRScanner from '@/components/scanner/QRScanner'
 import { Ticket } from 'lucide-react'
 
