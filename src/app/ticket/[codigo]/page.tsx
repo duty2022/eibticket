@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 import { supabaseAdmin } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { MapPin, Calendar, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
-import Image from 'next/image'
 
 async function getTicket(codigo: string) {
   const { data } = await supabaseAdmin
@@ -22,88 +22,110 @@ export default async function TicketPage({ params }: { params: { codigo: string 
 
   const isValid = ticket.status === 'valid'
   const isUsed = ticket.status === 'used'
+  
+  // Usar un generador de QR más confiable que el de Google Charts
+  const qrData = `https://eibticket.vercel.app/validate/${ticket.qr_code}`
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}`
 
   return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Status banner */}
-        <div className={`rounded-2xl p-5 mb-4 text-center ${
+        <div className={`rounded-t-2xl p-6 text-center shadow-lg ${
           isValid
             ? 'bg-green-500 text-white'
             : isUsed
             ? 'bg-gray-700 text-white'
             : 'bg-red-500 text-white'
         }`}>
-          {isValid && <CheckCircle className="w-10 h-10 mx-auto mb-2" />}
-          {isUsed && <AlertCircle className="w-10 h-10 mx-auto mb-2" />}
-          {!isValid && !isUsed && <XCircle className="w-10 h-10 mx-auto mb-2" />}
-          <p className="text-xl font-bold">
-            {isValid ? '✅ Ticket válido' : isUsed ? '⚠️ Ya utilizado' : '❌ No válido'}
+          {isValid && <CheckCircle className="w-12 h-12 mx-auto mb-2" />}
+          {isUsed && <AlertCircle className="w-12 h-12 mx-auto mb-2" />}
+          {!isValid && !isUsed && <XCircle className="w-12 h-12 mx-auto mb-2" />}
+          <p className="text-2xl font-black tracking-tight">
+            {isValid ? 'Ticket válido' : isUsed ? 'Ticket usado' : 'Ticket inválido'}
           </p>
-          {isUsed && ticket.validated_at && (
-            <p className="text-sm opacity-80 mt-1">
-              Usado el {format(new Date(ticket.validated_at), "d MMM yyyy 'a las' HH:mm", { locale: es })}
-            </p>
-          )}
         </div>
 
-        {/* Ticket card */}
-        <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+        {/* Ticket body */}
+        <div className="bg-white rounded-b-2xl shadow-xl overflow-hidden border-x border-b border-gray-100">
           {ticket.event?.banner_url && (
-            <img
-              src={ticket.event.banner_url}
-              alt={ticket.event.title}
-              className="w-full h-36 object-cover"
+            <img 
+              src={ticket.event.banner_url} 
+              alt="Evento" 
+              className="w-full h-32 object-cover"
             />
           )}
-          <div className="p-5 space-y-4">
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide mb-1">Evento</p>
-              <h1 className="text-xl font-bold text-gray-900">{ticket.event?.title}</h1>
+          
+          <div className="p-6 space-y-6">
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Evento</p>
+              <h1 className="text-xl font-black text-gray-900 leading-tight">{ticket.event?.title}</h1>
             </div>
 
-            <div className="space-y-2 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-blue-500" />
-                <span>{format(new Date(ticket.event.starts_at), "EEEE d 'de' MMMM yyyy", { locale: es })}</span>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Fecha</span>
+                </div>
+                <p className="text-sm font-bold text-gray-800">
+                  {format(new Date(ticket.event.starts_at), "d 'de' MMMM", { locale: es })}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-500" />
-                <span>{format(new Date(ticket.event.starts_at), 'HH:mm')} hs</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-500" />
-                <span>{ticket.event?.location}</span>
-              </div>
-            </div>
-
-            <div className="border-t border-dashed border-gray-200 pt-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Tipo</span>
-                <span className="font-semibold text-gray-900">{ticket.ticket_type?.name}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Titular</span>
-                <span className="font-semibold text-gray-900">{ticket.attendee_name}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Código</span>
-                <span className="font-mono text-xs text-gray-600">{ticket.qr_code}</span>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Hora</span>
+                </div>
+                <p className="text-sm font-bold text-gray-800">
+                  {format(new Date(ticket.event.starts_at), 'HH:mm')} hs
+                </p>
               </div>
             </div>
 
-            {/* QR */}
-            {ticket.qr_url && isValid && (
-              <div className="flex justify-center pt-2">
-                <img
-                  src={ticket.qr_url}
-                  alt="QR del ticket"
-                  className="w-40 h-40"
-                />
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-gray-500">
+                <MapPin className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Lugar</span>
               </div>
-            )}
+              <p className="text-sm font-bold text-gray-800">{ticket.event?.location}</p>
+            </div>
+
+            <div className="border-t border-dashed border-gray-200 pt-6 flex flex-col items-center gap-4">
+              <div className="text-center space-y-1">
+                <p className="text-xs font-bold text-gray-900 uppercase">{ticket.attendee_name}</p>
+                <p className="text-[10px] text-gray-400 font-mono tracking-widest">{ticket.qr_code}</p>
+              </div>
+
+              {/* QR Code */}
+              {isValid && (
+                <div className="bg-white p-3 rounded-2xl border-2 border-gray-50 shadow-inner">
+                  <img
+                    src={qrImageUrl}
+                    alt="QR Code"
+                    className="w-48 h-48 sm:w-56 sm:h-56"
+                    loading="eager"
+                  />
+                </div>
+              )}
+              
+              {!isValid && (
+                <div className="py-10 text-gray-300">
+                  <Ticket className="w-20 h-20 opacity-20" />
+                </div>
+              )}
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center">
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Categoría</span>
+              <span className="text-xs font-black text-gray-900">{ticket.ticket_type?.name}</span>
+            </div>
           </div>
         </div>
+        
+        <p className="text-center text-[10px] text-gray-400 mt-6 font-medium uppercase tracking-tighter">
+          Presentá este QR en la entrada para ingresar
+        </p>
       </div>
     </main>
   )
