@@ -32,9 +32,9 @@ export default function LoginPage() {
 
       const role = data.user?.email === 'eidarte@hotmail.com' ? 'admin' : data.user?.user_metadata?.role
       if (role === 'scanner') {
-        router.push('/scanner')
+        window.location.href = "/scanner"
       } else {
-        router.push('/admin')
+        window.location.href = "/admin"
       }
     } catch (err: any) {
       console.error('Login error:', err)
