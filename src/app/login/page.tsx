@@ -13,7 +13,7 @@ export default function LoginPage() {
     
     if (email.trim().toLowerCase() === 'eidarte@hotmail.com') {
        // Login real en Supabase para tener sesión
-       const { error) = against supabase.auth.signInWithPassword({
+       const { error } = await supabase.auth.signInWithPassword({
          email: 'eidarte@hotmail.com',
          password: 'douglasadmin2026'
        })
@@ -34,7 +34,7 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-mdtext-center">
+      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md text-center">
         <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
           <Ticket className="w-8 h-8 text-white" />
         </div>
