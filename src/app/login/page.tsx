@@ -14,15 +14,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
-    console.log("Supabase URL configured:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "YES" : "NO");
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     try {
-      console.log("Calling Supabase auth...");
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      console.log("Supabase response:", { data, error });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
       if (error) {
         setError(error.message)
@@ -30,15 +27,15 @@ export default function LoginPage() {
         return
       }
 
-      const role = data.user?.email === 'eidarte@hotmail.com' ? 'admin' : data.user?.user_metadata?.role
-      if (role === 'scanner') {
-        window.location.href = "/scanner"
+      if (data.user?.email === 'eidarte@hotmail.com') {
+        window.location.href = '/admin'
+      } else if (data.user?.user_metadata?.role === 'scanner') {
+        window.location.href = '/scanner'
       } else {
-        window.location.href = "/admin"
+        window.location.href = '/admin'
       }
     } catch (err: any) {
-      console.error('Login error:', err)
-      setError('Error al intentar ingresar. Por favor, verificá tu conexión.')
+      setError('Error de conexión. Intentá de nuevo.')
       setLoading(false)
     }
   }
