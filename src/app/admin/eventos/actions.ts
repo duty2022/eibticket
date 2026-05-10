@@ -25,3 +25,14 @@ export async function createEventWithBypass(eventData: any, ticketTypes: any[]) 
     return { success: false, error: error.message }
   }
 }
+
+export async function deleteEvent(id: string) {
+  try {
+    const { error } = await supabaseAdmin.from('events').delete().eq('id', id)
+    if (error) throw error
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error in deleteEvent:', error)
+    return { success: false, error: error.message }
+  }
+}
