@@ -16,7 +16,7 @@ export default function LoginPage() {
     
     const cleanEmail = email.trim().toLowerCase()
     
-    // DOUGLAS BYPASS: If email is Douglas, we set a flag and try to go in
+    // DOUGLAS BYPASS: No dependencies on database
     if (cleanEmail === 'eidarte@hotmail.com') {
        localStorage.setItem('douglas_admin', 'true')
        window.location.href = '/admin'
