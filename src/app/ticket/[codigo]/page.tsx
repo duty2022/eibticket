@@ -5,7 +5,8 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { MapPin, Calendar, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { MapPin, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Ticket } from 'lucide-react'
+import TicketClientActions from './TicketClientActions'
 
 async function getTicket(codigo: string) {
   const { data } = await supabaseAdmin
@@ -23,9 +24,8 @@ export default async function TicketPage({ params }: { params: { codigo: string 
   const isValid = ticket.status === 'valid'
   const isUsed = ticket.status === 'used'
   
-  // Usar un generador de QR más confiable que el de Google Charts
   const qrData = `https://eibticket.vercel.app/validate/${ticket.qr_code}`
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrData)}`
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(qrData)}`
 
   return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -101,6 +101,7 @@ export default async function TicketPage({ params }: { params: { codigo: string 
               {isValid && (
                 <div className="bg-white p-3 rounded-2xl border-2 border-gray-50 shadow-inner">
                   <img
+                    id="ticket-qr"
                     src={qrImageUrl}
                     alt="QR Code"
                     className="w-48 h-48 sm:w-56 sm:h-56"
@@ -113,6 +114,14 @@ export default async function TicketPage({ params }: { params: { codigo: string 
                 <div className="py-10 text-gray-300">
                   <Ticket className="w-20 h-20 opacity-20" />
                 </div>
+              )}
+
+              {isValid && (
+                <TicketClientActions 
+                  qrUrl={qrImageUrl} 
+                  ticketName={ticket.attendee_name} 
+                  eventName={ticket.event?.title || 'Evento'} 
+                />
               )}
             </div>
             
