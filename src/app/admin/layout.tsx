@@ -25,6 +25,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
+    console.log("AdminLayout: checking user...");
+    supabase.auth.getUser().then(({ data, error }) => {
+      console.log("AdminLayout: user response:", { data, error });
+      if (error || !data.user) {
+        console.error("AdminLayout: No user found, redirecting to login");
+        router.push("/login");
+        return;
+      }
+      const role = data.user.email === "eidarte@hotmail.com" ? "admin" : data.user.user_metadata?.role;
+      console.log("AdminLayout: identified role:", role);
+      if (role !== "admin") {
+        console.error("AdminLayout: Not an admin, redirecting to login");
+        router.push("/login");
+        return;
+      }
     supabase.auth.getUser().then(({ data }) => {
       setUserEmail(data.user?.email || '')
     })
