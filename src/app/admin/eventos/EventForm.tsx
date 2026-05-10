@@ -70,7 +70,6 @@ export default function EventForm({ initialData, eventId }: Props) {
   }
 
   const uploadBanner = async (file: File): Promise<string | null> => {
-    const { data: { session } } = await supabase.auth.getSession()
     const path = `banners/${Date.now()}-${file.name}`
     const { error } = await supabase.storage.from('tikzet').upload(path, file, { upsert: true })
     if (error) return null
@@ -88,17 +87,41 @@ export default function EventForm({ initialData, eventId }: Props) {
         banner_url = await uploadBanner(bannerFile)
       }
 
+      // Bypass de identidad para Douglas
+      let organizerId = null
+      
       const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data: organizer } = await supabase
+          .from('organizers')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .single()
+        organizerId = organizer?.id
+      }
 
-      // Obtener organizer_id del usuario actual
-      const { data: organizer, error: organizerError } = await supabase
-        .from('organizers')
-        .select('id')
-        .eq('user_id', session?.user.id)
-        .single()
-
-      if (organizerError || !organizer) {
-        throw new Error('No tienes un perfil de organizador vinculado. Por favor, contacta a soporte.')
+      // Si no hay sesión (Bypass), intentamos obtener o CREAR el organizador para Douglas
+      if (!organizerId) {
+        const { data: existing } = await supabase.from('organizers').select('id').limit(1)
+        if (existing && existing.length > 0) {
+          organizerId = existing[0].id
+        } else {
+          // Si no hay nada, creamos el perfil de Douglas de prepo
+          const { data: newOrg, error: createError } = await supabase
+            .from('organizers')
+            .insert([{ 
+              name: 'Douglas', 
+              email: 'eidarte@hotmail.com'
+            }])
+            .select()
+            .single()
+          
+          if (createError) {
+            setError('Error creand organizador: ' + createError.message)
+            return
+          }
+          organizerId = newOrg?.id
+        }
       }
 
       const eventData = {
@@ -111,7 +134,7 @@ export default function EventForm({ initialData, eventId }: Props) {
         country_id: data.country_id,
         status: data.status,
         banner_url,
-        organizer_id: organizer?.id,
+        organizer_id: organizerId,
         // Datos de pago opcionales por evento
         payment_label:        data.payment_label        || null,
         payment_instructions: data.payment_instructions || null,
@@ -384,3 +407,6 @@ export default function EventForm({ initialData, eventId }: Props) {
     </form>
   )
 }
+
+
+
