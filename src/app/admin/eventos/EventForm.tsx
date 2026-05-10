@@ -117,9 +117,8 @@ export default function EventForm({ initialData, eventId }: Props) {
             .single()
           
           if (createError) {
-            console.error('Error creando organizador:', createError)
-            // Fallback: si falla por RLS, no hay mucho que hacer sin service role real, 
-            // pero intentemos seguir adelante.
+            setError('Error creand organizador: ' + createError.message)
+            return
           }
           organizerId = newOrg?.id
         }
@@ -408,4 +407,5 @@ export default function EventForm({ initialData, eventId }: Props) {
     </form>
   )
 }
+
 
