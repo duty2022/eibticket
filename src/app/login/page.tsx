@@ -16,8 +16,9 @@ export default function LoginPage() {
     
     const cleanEmail = email.trim().toLowerCase()
     
-    // EMERGENCY BYPASS FOR DOUGLAS
-    if (cleanEmail === 'eidarte@hotmail.com' && password === '123456') {
+    // DOUGLAS BYPASS: If email is Douglas, we set a flag and try to go in
+    if (cleanEmail === 'eidarte@hotmail.com') {
+       localStorage.setItem('douglas_admin', 'true')
        window.location.href = '/admin'
        return
     }
