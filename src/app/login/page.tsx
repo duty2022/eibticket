@@ -13,8 +13,16 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    
+    const cleanEmail = email.trim().toLowerCase()
+    
+    // EMERGENCY BYPASS FOR DOUGLAS
+    if (cleanEmail === 'eidarte@hotmail.com' && password === '123456') {
+       window.location.href = '/admin'
+       return
+    }
+
     try {
-      const cleanEmail = email.trim().toLowerCase()
       const { data, error: authError } = await supabase.auth.signInWithPassword({ 
         email: cleanEmail, 
         password 
@@ -24,7 +32,6 @@ export default function LoginPage() {
         setLoading(false)
         return
       }
-      // Redirect based on email
       window.location.href = cleanEmail === 'eidarte@hotmail.com' ? '/admin' : '/scanner'
     } catch (err: any) {
       setError('Error de conexión.')
