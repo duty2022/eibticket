@@ -25,25 +25,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
-    console.log("AdminLayout: checking user...");
     supabase.auth.getUser().then(({ data, error }) => {
-      console.log("AdminLayout: user response:", { data, error });
       if (error || !data.user) {
-        console.error("AdminLayout: No user found, redirecting to login");
-        router.push("/login");
-        return;
+        router.push('/login')
+        return
       }
-      const role = data.user.email === "eidarte@hotmail.com" ? "admin" : data.user.user_metadata?.role;
-      console.log("AdminLayout: identified role:", role);
-      if (role !== "admin") {
-        console.error("AdminLayout: Not an admin, redirecting to login");
-        router.push("/login");
-        return;
+      
+      const role = data.user.email === 'eidarte@hotmail.com' ? 'admin' : data.user.user_metadata?.role
+      if (role !== 'admin') {
+        router.push('/login')
+        return
       }
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email || '')
+      
+      setUserEmail(data.user.email || '')
     })
-  }, [])
+  }, [router])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -55,7 +51,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar desktop */}
       <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 fixed h-full">
         <div className="p-5 border-b border-gray-100">
           <div className="flex items-center gap-2">
@@ -69,11 +64,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                isActive(href, exact)
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
+              className={}
             >
               <Icon className="w-4 h-4" />
               {label}
@@ -91,7 +82,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Header mobile */}
       <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-40 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Ticket className="w-5 h-5 text-blue-600" />
@@ -102,7 +92,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </button>
       </div>
 
-      {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden fixed inset-0 z-30 bg-white pt-16">
           <nav className="p-4 space-y-1">
@@ -111,11 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={href}
                 href={href}
                 onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition ${
-                  isActive(href, exact)
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
+                className={}
               >
                 <Icon className="w-5 h-5" />
                 {label}
@@ -132,7 +117,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      {/* Contenido */}
       <main className="flex-1 md:ml-60 pt-16 md:pt-0">
         <div className="p-4 md:p-8">{children}</div>
       </main>
