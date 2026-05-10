@@ -70,7 +70,6 @@ export default function EventForm({ initialData, eventId }: Props) {
   }
 
   const uploadBanner = async (file: File): Promise<string | null> => {
-    const { data: { session } } = await supabase.auth.getSession()
     const path = `banners/${Date.now()}-${file.name}`
     const { error } = await supabase.storage.from('tikzet').upload(path, file, { upsert: true })
     if (error) return null
@@ -88,14 +87,24 @@ export default function EventForm({ initialData, eventId }: Props) {
         banner_url = await uploadBanner(bannerFile)
       }
 
+      // Bypass de identidad para Douglas
+      let organizerId = null
+      
       const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data: organizer } = await supabase
+          .from('organizers')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .single()
+        organizerId = organizer?.id
+      }
 
-      // Obtener organizer_id del usuario actual
-      const { data: organizer } = await supabase
-        .from('organizers')
-        .select('id')
-        .eq('user_id', session?.user.id)
-        .single()
+      // Si no hay sesión (Bypass), buscamos el primer organizador disponible (Douglas)
+      if (!organizerId) {
+        const { data: allOrganizers } = await supabase.from('organizers').select('id').limit(1)
+        organizerId = allOrganizers?.[0]?.id
+      }
 
       const eventData = {
         title: data.title,
@@ -107,7 +116,7 @@ export default function EventForm({ initialData, eventId }: Props) {
         country_id: data.country_id,
         status: data.status,
         banner_url,
-        organizer_id: organizer?.id,
+        organizer_id: organizerId,
         // Datos de pago opcionales por evento
         payment_label:        data.payment_label        || null,
         payment_instructions: data.payment_instructions || null,
@@ -380,3 +389,4 @@ export default function EventForm({ initialData, eventId }: Props) {
     </form>
   )
 }
+
