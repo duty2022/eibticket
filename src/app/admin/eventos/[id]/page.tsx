@@ -7,7 +7,6 @@ import { CalendarDays, MapPin, Users, ArrowLeft, ExternalLink, Ticket, CheckCirc
 import DeleteEventButton from './DeleteEventButton'
 
 async function getEventData(id: string) {
-  // 1. Obtener datos básicos del evento y tipos de tickets
   const { data: event } = await supabaseAdmin
     .from('events')
     .select('*, ticket_types(*)')
@@ -16,15 +15,19 @@ async function getEventData(id: string) {
 
   if (!event) return null
 
-  // 2. Contar tickets vendidos (ya los tenemos en ticket_types.sold, pero validemos contra la tabla tickets)
-  // 3. Contar tickets UTILIZADOS (status = 'used')
-  const { count: usedCount } = await supabaseAdmin
+  // CONTAMOS TICKETS REALES DE LA BASE DE DATOS
+  const { data: allTickets } = await supabaseAdmin
     .from('tickets')
-    .select('*', { count: 'exact', head: true })
+    .select('status')
     .eq('event_id', id)
-    .eq('status', 'used')
 
-  return { event, usedCount: usedCount || 0 }
+  const stats = {
+    total: allTickets?.length || 0,
+    used: allTickets?.filter(t => t.status === 'used').length || 0,
+    confirmed: allTickets?.filter(t => t.status === 'confirmed').length || 0
+  }
+
+  return { event, stats }
 }
 
 export default async function EventoDetailPage({ params }: { params: { id: string } }) {
@@ -34,10 +37,9 @@ export default async function EventoDetailPage({ params }: { params: { id: strin
     notFound()
   }
 
-  const { event, usedCount } = data
-  const totalSold = event.ticket_types?.reduce((s: number, t: any) => s + t.sold, 0) || 0
+  const { event, stats } = data
   const totalCap = event.ticket_types?.reduce((s: number, t: any) => s + t.capacity, 0) || 0
-  const attendanceRate = totalSold > 0 ? Math.round((usedCount / totalSold) * 100) : 0
+  const attendanceRate = stats.total > 0 ? Math.round((stats.used / stats.total) * 100) : 0
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
@@ -85,23 +87,23 @@ export default async function EventoDetailPage({ params }: { params: { id: strin
             </div>
           </div>
 
-          {/* ESTADÍSTICAS REAL-TIME */}
+          {/* ESTADÍSTICAS CORREGIDAS */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-[32px] border-2 border-blue-50 shadow-sm flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-3">
                 <ShoppingCart className="w-6 h-6 text-blue-600" />
               </div>
-              <p className="text-gray-500 text-xs font-black uppercase tracking-widest">Vendidos</p>
-              <p className="text-4xl font-black text-gray-900 mt-1">{totalSold}</p>
-              <p className="text-[10px] text-gray-400 mt-1 font-bold">DE {totalCap} DISPONIBLES</p>
+              <p className="text-gray-500 text-xs font-black uppercase tracking-widest">Emitidos</p>
+              <p className="text-4xl font-black text-gray-900 mt-1">{stats.total}</p>
+              <p className="text-[10px] text-gray-400 mt-1 font-bold">TICKETS GENERADOS</p>
             </div>
 
             <div className="bg-white p-6 rounded-[32px] border-2 border-green-50 shadow-sm flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center mb-3">
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
-              <p className="text-gray-500 text-xs font-black uppercase tracking-widest">Ingresados</p>
-              <p className="text-4xl font-black text-gray-900 mt-1">{usedCount}</p>
+              <p className="text-gray-500 text-xs font-black uppercase tracking-widest">En el salón</p>
+              <p className="text-4xl font-black text-gray-900 mt-1">{stats.used}</p>
               <p className="text-[10px] text-gray-400 mt-1 font-bold">{attendanceRate}% DE ASISTENCIA</p>
             </div>
 
@@ -110,16 +112,16 @@ export default async function EventoDetailPage({ params }: { params: { id: strin
                 <Users className="w-6 h-6 text-purple-600" />
               </div>
               <p className="text-gray-500 text-xs font-black uppercase tracking-widest">Ausentes</p>
-              <p className="text-4xl font-black text-gray-900 mt-1">{totalSold - usedCount}</p>
-              <p className="text-[10px] text-gray-400 mt-1 font-bold font-bold uppercase tracking-widest">Faltan llegar</p>
+              <p className="text-4xl font-black text-gray-900 mt-1">{stats.total - stats.used}</p>
+              <p className="text-[10px] text-gray-400 mt-1 font-bold font-bold uppercase tracking-widest">FALTAN LLEGAR</p>
             </div>
           </div>
 
-          {/* DETALLE POR TIPO DE TICKET */}
+          {/* DETALLE POR CATEGORÍA */}
           <div className="space-y-4">
             <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
               <Ticket className="w-5 h-5 text-blue-600" />
-              Detalle por Categoría
+              Categorías
             </h2>
             <div className="grid gap-4">
               {event.ticket_types?.map((ticket: any) => (
@@ -129,25 +131,12 @@ export default async function EventoDetailPage({ params }: { params: { id: strin
                     <p className="text-sm font-bold text-gray-500">Precio: ${ticket.price}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-black text-gray-900">{ticket.sold} / {ticket.capacity}</p>
-                    <div className="w-32 h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                      <div 
-                        className="h-full bg-blue-600 rounded-full" 
-                        style={{ width: `${(ticket.sold / ticket.capacity) * 100}%` }}
-                      />
-                    </div>
+                    <p className="text-2xl font-black text-gray-900">{ticket.capacity} cupos</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
-          {event.description && (
-            <div className="space-y-3 pt-6 border-t border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 uppercase text-xs tracking-widest text-gray-400">Sobre este evento</h2>
-              <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{event.description}</p>
-            </div>
-          )}
         </div>
       </div>
     </div>
