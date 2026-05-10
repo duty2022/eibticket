@@ -1,11 +1,12 @@
-export const dynamic = "force-dynamic"
-
 import { supabaseAdmin } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { MapPin, Calendar, Clock, Users } from 'lucide-react'
 import BuyTicketForm from './BuyTicketForm'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 async function getEvent(id: string) {
   const { data } = await supabaseAdmin
