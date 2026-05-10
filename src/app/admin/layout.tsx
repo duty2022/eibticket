@@ -60,19 +60,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-xs text-gray-400 mt-1 truncate">{userEmail}</p>
         </div>
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map(({ href, label, icon: Icon, exact }) => {
-            const active = isActive(href, exact)
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={active ? 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition bg-blue-50 text-blue-700' : 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-gray-600 hover:bg-gray-50'}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </Link>
-            )
-          })}
+          {navItems.map(({ href, label, icon: Icon, exact }) => (
+            <Link
+              key={href}
+              href={href}
+              className={isActive(href, exact)
+                ? 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition bg-blue-50 text-blue-700'
+                : 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition text-gray-600 hover:bg-gray-50'
+              }
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </Link>
+          ))}
         </nav>
         <div className="p-3 border-t border-gray-100">
           <button
@@ -98,20 +98,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {menuOpen && (
         <div className="md:hidden fixed inset-0 z-30 bg-white pt-16">
           <nav className="p-4 space-y-1">
-            {navItems.map(({ href, label, icon: Icon, exact }) => {
-              const active = isActive(href, exact)
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setMenuOpen(false)}
-                  className={active ? 'flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition bg-blue-50 text-blue-700' : 'flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition text-gray-600 hover:bg-gray-50'}
-                >
-                  <Icon className="w-5 h-5" />
-                  {label}
-                </Link>
-              )
-            })}
+            {navItems.map(({ href, label, icon: Icon, exact }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMenuOpen(false)}
+                className={isActive(href, exact)
+                  ? 'flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition bg-blue-50 text-blue-700'
+                  : 'flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition text-gray-600 hover:bg-gray-50'
+                }
+              >
+                <Icon className="w-5 h-5" />
+                {label}
+              </Link>
+            ))}
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-red-600 hover:bg-red-50 w-full mt-4"
