@@ -12,11 +12,16 @@ export async function GET() {
     if (error) {
       return NextResponse.json({
         status: 'error',
-        message: error.message,
-        details: error,
+        message: err.message,
+        details: err,
+        env: {
+          url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+          anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? `${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.substring(0, 10)}...` : 'MISSING',
+          service: process.env.SUPABASE_SERVICE_ROLE_KEY ? `${process.env.SUPABASE_SERVICE_ROLE_KEY.substring(0, 10)}...` : 'MISSING',
+        },
         duration_ms: duration
       }, { status: 500 })
-    }
+    }(
 
     return NextResponse.json({
       status: 'success',
