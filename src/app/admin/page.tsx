@@ -3,18 +3,35 @@ import { supabaseAdmin } from '@/lib/supabase'
 import Link from 'next/link'
 import { CalendarDays, Ticket, CheckCircle, Clock, TrendingUp } from 'lucide-react'
 
+// Helper to wrap promise with a timeout
+const withTimeout = (promise: Promise<any>, ms: number) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+  ])
+}
+
 async function getDashboardStats() {
   try {
-    const [events, orders, tickets] = await Promise.all([
-      supabaseAdmin.from('events').select('id, status', { count: 'exact' }),
-      supabaseAdmin.from('orders').select('id, status, total_price, currency', { count: 'exact' }),
-      supabaseAdmin.from('tickets').select('id, status', { count: 'exact' }),
-    ])
+    // We try to get stats but we don't wait forever
+    const fetchStats = async () => {
+      const [events, orders, tickets] = await Promise.all([
+        supabaseAdmin.from('events').select('id, status', { count: 'exact' }),
+        supabaseAdmin.from('orders').select('id, status, total_price, currency', { count: 'exact' }),
+        supabaseAdmin.from('tickets').select('id, status', { count: 'exact' }),
+      ])
+      return { events, orders, tickets }
+    }
 
+    const result: any = await withTimeout(fetchStats(), 4000).catch(() => null)
+
+    if (!result) throw new Error('DB Unreachable')
+
+    const { events, orders, tickets } = result
     const allOrders = orders.data || []
-    const pendingOrders = allOrders.filter(o => o.status === 'reviewing').length
-    const approvedOrders = allOrders.filter(o => o.status === 'approved').length
-    const publishedEvents = (events.data || []).filter(e => e.status === 'published').length
+    const pendingOrders = allOrders.filter((o: any) => o.status === 'reviewing').length
+    const approvedOrders = allOrders.filter((o: any) => o.status === 'approved').length
+    const publishedEvents = (events.data || []).filter((e: any) => e.status === 'published').length
 
     return {
       totalEvents: events.count || 0,
@@ -23,8 +40,8 @@ async function getDashboardStats() {
       pendingOrders,
       approvedOrders,
       totalTickets: tickets.count || 0,
-      validTickets: (tickets.data || []).filter(t => t.status === 'valid').length,
-      usedTickets: (tickets.data || []).filter(t => t.status === 'used').length,
+      validTickets: (tickets.data || []).filter((t: any) => t.status === 'valid').length,
+      usedTickets: (tickets.data || []).filter((t: any) => t.status === 'used').length,
     }
   } catch (err) {
     console.error('Error fetching stats:', err)
@@ -37,11 +54,14 @@ async function getDashboardStats() {
 
 async function getRecentOrders() {
   try {
-    const { data } = await supabaseAdmin
-      .from('orders')
-      .select('*, event:events(title), ticket_type:ticket_types(name)')
-      .order('created_at', { ascending: false })
-      .limit(5)
+    const { data } = await withTimeout(
+      supabaseAdmin
+        .from('orders')
+        .select('*, event:events(title), ticket_type:ticket_types(name)')
+        .order('created_at', { ascending: false })
+        .limit(5),
+      4000
+    )
     return data || []
   } catch (err) {
     return []
@@ -67,7 +87,7 @@ export default async function AdminDashboard() {
   ]
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-4 md:p-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-500">Resumen general de Tikzet</p>
