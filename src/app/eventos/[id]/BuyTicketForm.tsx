@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -51,7 +51,16 @@ export default function BuyTicketForm({ event }: Props) {
   const quantity = watch('quantity')
   const selectedTypeId = watch('ticket_type_id')
   const selectedType = event.ticket_types?.find(t => t.id === selectedTypeId)
+  const available = selectedType ? (selectedType.capacity - selectedType.sold) : 0
+  const maxAllowed = Math.min(10, available)
   const total = selectedType ? selectedType.price * quantity : 0
+
+  // Ajustar cantidad si excede el máximo permitido al cambiar de tipo
+  useEffect(() => {
+    if (quantity > maxAllowed && maxAllowed > 0) {
+      setValue('quantity', maxAllowed)
+    }
+  }, [maxAllowed, quantity, setValue])
 
   const onSubmit = async (data: FormData) => {
     setLoading(true)
@@ -179,8 +188,9 @@ export default function BuyTicketForm({ event }: Props) {
           <span className="text-xl font-bold w-8 text-center">{quantity}</span>
           <button
             type="button"
-            onClick={() => setValue('quantity', Math.min(10, quantity + 1))}
-            className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition"
+            onClick={() => setValue('quantity', Math.min(maxAllowed, quantity + 1))}
+            className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition disabled:opacity-30"
+            disabled={quantity >= maxAllowed}
           >
             <Plus className="w-4 h-4" />
           </button>
