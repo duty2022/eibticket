@@ -1,3 +1,5 @@
+
+export const dynamic = "force-dynamic"
 import { supabaseAdmin } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
