@@ -1,9 +1,12 @@
 export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 import { supabaseAdmin } from '@/lib/supabase'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Search } from 'lucide-react'
+import { headers } from 'next/headers'
 
 const statusMap: Record<string, { label: string; color: string }> = {
   pending:   { label: 'Pendiente',     color: 'bg-yellow-100 text-yellow-700' },
@@ -14,6 +17,7 @@ const statusMap: Record<string, { label: string; color: string }> = {
 }
 
 async function getOrders(status?: string) {
+  // Forzamos la consulta a Supabase sin cache
   let query = supabaseAdmin
     .from('orders')
     .select('*, event:events(title), ticket_type:ticket_types(name)')
@@ -32,6 +36,9 @@ export default async function OrdenesPage({
 }: {
   searchParams: { status?: string }
 }) {
+  // Llamar a headers() asegura que Next.js no cachee la página de forma estática
+  headers();
+  
   const status = searchParams.status || 'all'
   const orders = await getOrders(status)
 
