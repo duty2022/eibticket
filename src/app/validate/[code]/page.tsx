@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 
 export const dynamic = "force-dynamic"
 // Esta página es el destino del QR cuando lo escanea un celular normal (no el scanner admin).
