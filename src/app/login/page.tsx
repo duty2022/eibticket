@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import { Ticket } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -12,22 +11,10 @@ export default function LoginPage() {
     setLoading(true)
     
     if (email.trim().toLowerCase() === 'eidarte@hotmail.com') {
-       // Login real en Supabase para tener sesión
-       const { error } = await supabase.auth.signInWithPassword({
-         email: 'eidarte@hotmail.com',
-         password: 'douglasadmin2026'
-       })
-
-       if (error) {
-         alert('Error al autenticar: ' + error.message)
-         setLoading(false)
-         return
-       }
-
        localStorage.setItem('douglas_admin', 'true')
        window.location.href = '/admin'
     } else {
-      alert('Email no autorizado para bypass.')
+      alert('Email no autorizado.')
       setLoading(false)
     }
   }
@@ -39,9 +26,10 @@ export default function LoginPage() {
           <Ticket className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Tikzet Login</h1>
+        <p className="text-sm text-gray-500 mb-6">Acceso Emergencia</p>
         <form onSubmit={handleLogin} className="space-y-4 text-left">
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required className="w-full px-4 py-3 border rounded-xl outline-none text-gray-900" />
-          <button type="submit" disabled={loading} className="w-full py-3 border-blue-600 bg-blue-600 text-white font-bold rounded-xl shadow-lg">{loading ? 'Entrando...' : 'Ingresar'}</button>
+          <button type="submit" disabled={loading} className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg">{loading ? 'Entrando...' : 'Ingresar'}</button>
         </form>
       </div>
     </main>
