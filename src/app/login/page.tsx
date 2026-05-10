@@ -1,12 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Ticket, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -15,27 +13,31 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('Login attempt started for:', email)
     setLoading(true)
     setError(null)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-
-      if (error) {
-        setError(error.message)
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+      
+      if (authError) {
+        console.error('Auth error:', authError)
+        setError(authError.message)
         setLoading(false)
         return
       }
 
-      if (data.user?.email === 'eidarte@hotmail.com') {
-        window.location.href = '/admin'
-      } else if (data.user?.user_metadata?.role === 'scanner') {
-        window.location.href = '/scanner'
-      } else {
-        window.location.href = '/admin'
-      }
+      console.log('Auth success, user:', data.user?.email)
+      
+      // Redirect based on email or metadata
+      const isAdmin = data.user?.email === 'eidarte@hotmail.com'
+      const target = isAdmin ? '/admin' : '/scanner'
+      
+      console.log('Redirecting to:', target)
+      window.location.assign(target)
     } catch (err: any) {
-      setError('Error de conexión. Intentá de nuevo.')
+      console.error('Unexpected error:', err)
+      setError('Error inesperado. Ver consola.')
       setLoading(false)
     }
   }
@@ -48,7 +50,7 @@ export default function LoginPage() {
             <Ticket className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Tikzet</h1>
-          <p className="text-gray-500 text-sm mt-1">Panel de administración</p>
+          <p className="text-gray-500 text-sm mt-1">Admin Panel</p>
         </div>
 
         <form onSubmit={handleLogin} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
@@ -96,7 +98,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60 transition"
           >
-            {loading ? 'Ingresando...' : 'Ingresar'}
+            {loading ? 'Cargando...' : 'Ingresar'}
           </button>
         </form>
       </div>
