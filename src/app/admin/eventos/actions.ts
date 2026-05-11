@@ -70,6 +70,36 @@ export async function updateEventWithBypass(eventId: string, eventData: any, tic
   }
 }
 
+export async function uploadImage(formData: FormData) {
+  try {
+    const file = formData.get('file') as File
+    if (!file) return { success: false, error: 'No se encontró el archivo' }
+
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`
+    const path = `banners/${fileName}`
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('tikzet')
+      .upload(path, buffer, {
+        contentType: file.type,
+        upsert: true
+      })
+
+    if (uploadError) throw uploadError
+
+    const { data: { publicUrl } } = supabaseAdmin.storage
+      .from('tikzet')
+      .getPublicUrl(path)
+
+    return { success: true, url: publicUrl }
+  } catch (error: any) {
+    console.error('Upload image error:', error)
+    return { success: false, error: error.message }
+  }
+}
+
 export async function deleteEvent(id: string) {
   try {
     const { error } = await supabaseAdmin.from('events').delete().eq('id', id)
