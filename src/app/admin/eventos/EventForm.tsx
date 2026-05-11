@@ -6,6 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { supabase } from '@/lib/supabase'
+import { createEventWithBypass, updateEventWithBypass } from './actions'
 import { Plus, Trash2, Upload } from 'lucide-react'
 
 const ticketTypeSchema = z.object({
@@ -87,43 +88,6 @@ export default function EventForm({ initialData, eventId }: Props) {
         banner_url = await uploadBanner(bannerFile)
       }
 
-      // Bypass de identidad para Douglas
-      let organizerId = null
-      
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        const { data: organizer } = await supabase
-          .from('organizers')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .single()
-        organizerId = organizer?.id
-      }
-
-      // Si no hay sesión (Bypass), intentamos obtener o CREAR el organizador para Douglas
-      if (!organizerId) {
-        const { data: existing } = await supabase.from('organizers').select('id').limit(1)
-        if (existing && existing.length > 0) {
-          organizerId = existing[0].id
-        } else {
-          // Si no hay nada, creamos el perfil de Douglas de prepo
-          const { data: newOrg, error: createError } = await supabase
-            .from('organizers')
-            .insert([{ 
-              name: 'Douglas', 
-              email: 'eidarte@hotmail.com'
-            }])
-            .select()
-            .single()
-          
-          if (createError) {
-            setError('Error creand organizador: ' + createError.message)
-            return
-          }
-          organizerId = newOrg?.id
-        }
-      }
-
       const eventData = {
         title: data.title,
         description: data.description,
@@ -134,43 +98,24 @@ export default function EventForm({ initialData, eventId }: Props) {
         country_id: data.country_id,
         status: data.status,
         banner_url,
-        organizer_id: organizerId,
-        // Datos de pago opcionales por evento
-        payment_label:        data.payment_label        || null,
+        payment_label: data.payment_label || null,
         payment_instructions: data.payment_instructions || null,
-        payment_holder:       data.payment_holder       || null,
+        payment_holder: data.payment_holder || null,
       }
 
-      let savedEventId = eventId
-
+      let result;
       if (eventId) {
-        // Editar
-        await supabase.from('events').update(eventData).eq('id', eventId)
-        // Eliminar tipos anteriores y reinsertar
-        await supabase.from('ticket_types').delete().eq('event_id', eventId)
+        result = await updateEventWithBypass(eventId, eventData, data.ticket_types)
       } else {
-        // Crear
-        const { data: newEvent, error: eventError } = await supabase
-          .from('events')
-          .insert(eventData)
-          .select()
-          .single()
-
-        if (eventError || !newEvent) throw new Error('Error al crear el evento')
-        savedEventId = newEvent.id
+        result = await createEventWithBypass(eventData, data.ticket_types)
       }
 
-      // Insertar tipos de ticket
-      await supabase.from('ticket_types').insert(
-        data.ticket_types.map(tt => ({
-          ...tt,
-          event_id: savedEventId,
-          sold: 0,
-        }))
-      )
-
-      router.push('/admin/eventos')
-      router.refresh()
+      if (result.success) {
+        router.push('/admin/eventos')
+        router.refresh()
+      } else {
+        throw new Error(result.error || 'Error al guardar el evento')
+      }
     } catch (err: any) {
       setError(err.message || 'Error al guardar el evento')
     } finally {
