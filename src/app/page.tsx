@@ -29,7 +29,7 @@ export default async function HomePage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Ticket className="w-6 h-6 text-blue-600" />
-            <span className="text-xl font-bold text-gray-900">Tikzet</span>
+            <span className="text-xl font-bold text-gray-900">EIbTicket</span>
           </div>
           <Link
             href="/login"
