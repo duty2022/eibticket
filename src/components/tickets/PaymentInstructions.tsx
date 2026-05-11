@@ -73,7 +73,7 @@ export default function PaymentInstructions({ orderId, paymentInfo, onReceiptUpl
         <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
         <h3 className="text-lg font-bold text-green-800">¡Comprobante enviado!</h3>
         <p className="text-green-700 mt-1">
-          Revisaremos tu pago y recibirás tu ticket por email en breve.
+          Revisaremos tu pago y recibirás tu ticket por WhatsApp en breve.
         </p>
       </div>
     )
