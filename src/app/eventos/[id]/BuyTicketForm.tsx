@@ -114,7 +114,7 @@ export default function BuyTicketForm({ event }: Props) {
         <div className="text-5xl mb-4">🎉</div>
         <h3 className="text-xl font-bold text-green-800 mb-2">¡Todo listo!</h3>
         <p className="text-green-700">
-          Revisaremos tu comprobante y te enviaremos el ticket con el código QR a tu email.
+          Revisaremos tu comprobante y te enviaremos el ticket con el código QR por WhatsApp.
         </p>
       </div>
     )
@@ -214,7 +214,7 @@ export default function BuyTicketForm({ event }: Props) {
           <input
             {...register('buyer_email')}
             type="email"
-            placeholder="Email (te llegará el ticket acá)"
+            placeholder="Email"
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
           />
           {errors.buyer_email && (
