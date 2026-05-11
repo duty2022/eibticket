@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { supabase } from '@/lib/supabase'
-import { createEventWithBypass, updateEventWithBypass } from './actions'
+import { createEventWithBypass, updateEventWithBypass, uploadImage } from './actions'
 import { Plus, Trash2, Upload } from 'lucide-react'
 
 const ticketTypeSchema = z.object({
@@ -70,14 +70,6 @@ export default function EventForm({ initialData, eventId }: Props) {
     }
   }
 
-  const uploadBanner = async (file: File): Promise<string | null> => {
-    const path = `banners/${Date.now()}-${file.name}`
-    const { error } = await supabase.storage.from('tikzet').upload(path, file, { upsert: true })
-    if (error) return null
-    const { data } = supabase.storage.from('tikzet').getPublicUrl(path)
-    return data.publicUrl
-  }
-
   const onSubmit = async (data: FormData) => {
     setLoading(true)
     setError(null)
@@ -85,7 +77,17 @@ export default function EventForm({ initialData, eventId }: Props) {
     try {
       let banner_url = initialData?.banner_url || null
       if (bannerFile) {
-        banner_url = await uploadBanner(bannerFile)
+        const formData = new FormData()
+        formData.append('file', bannerFile)
+        const uploadRes = await uploadImage(formData)
+        
+        if (uploadRes.success) {
+          banner_url = uploadRes.url
+        } else {
+          setError('Error al subir la imagen: ' + uploadRes.error)
+          setLoading(false)
+          return
+        }
       }
 
       const eventData = {
