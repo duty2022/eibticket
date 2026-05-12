@@ -93,8 +93,8 @@ export async function uploadImage(formData: FormData) {
 
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const fileName = f"{int(1000*1000)}-{file.name.replace(' ', '_')}"
-    const path = f"banners/{fileName}"
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`
+    const path = `banners/${fileName}`
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('tikzet')
