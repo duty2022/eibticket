@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '@/lib/supabase'
 import EventForm from '../../EventForm'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -8,7 +8,6 @@ import Link from 'next/link'
 export default function EditEventPage({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
 
   useEffect(() => {
     async function loadEvent() {
@@ -23,7 +22,7 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
       setLoading(false)
     }
     loadEvent()
-  }, [params.id, supabase])
+  }, [params.id])
 
   if (loading) return <div className="p-8 text-center">Cargando...</div>
   if (!event) return (
