@@ -95,7 +95,7 @@ export default async function HomePage() {
                         <span className="text-blue-600 font-bold">
                           {minPrice === 0
                             ? 'Gratis'
-                            : `Desde ${event.country?.currency_symbol}${minPrice.toLocaleString('es')}`}
+                            : `${event.country?.currency_symbol}${minPrice.toLocaleString('es')}`}
                         </span>
                       )}
                       <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-medium">
@@ -112,3 +112,4 @@ export default async function HomePage() {
     </main>
   )
 }
+
