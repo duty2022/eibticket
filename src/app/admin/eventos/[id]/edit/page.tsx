@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import EventForm from '../../EventForm'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -8,18 +8,30 @@ import Link from 'next/link'
 export default function EditEventPage({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
     async function loadEvent() {
-      const { data } = await supabaseAdmin.from('events').select('*, ticket_types(*)').eq('id', params.id).single()
+      const { data, error } = await supabase
+        .from('events')
+        .select('*, ticket_types(*)')
+        .eq('id', params.id)
+        .single()
+      
+      if (error) console.error('Error loading event:', error)
       setEvent(data)
       setLoading(false)
     }
     loadEvent()
-  }, [params.id])
+  }, [params.id, supabase])
 
   if (loading) return <div className="p-8 text-center">Cargando...</div>
-  if (!event) return <div className="p-8 text-center">Evento no encontrado</div>
+  if (!event) return (
+    <div className="p-8 text-center space-y-4">
+      <p>Evento no encontrado (ID: {params.id})</p>
+      <Link href="/admin/eventos" className="text-blue-600 underline">Volver a la lista</Link>
+    </div>
+  )
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
