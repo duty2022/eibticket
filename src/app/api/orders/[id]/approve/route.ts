@@ -31,11 +31,11 @@ export async function POST(
       const qrPath = `qrs/${ticket.qr_code}.png`
       const url = `${process.env.NEXT_PUBLIC_APP_URL}/validate/${ticket.qr_code}`
       
-      // Generar QR Buffer directamente
+      // Generar QR Buffer directamente con tamaño reducido
       const qrBuffer = await QRCode.toBuffer(url, {
-        width: 400,
-        margin: 2,
-        errorCorrectionLevel: 'H',
+        width: 250, // Reducido de 400 a 250
+        margin: 1,  // Margen mínimo
+        errorCorrectionLevel: 'M', // Nivel medio para que el código sea menos denso y más rápido de generar/leer
       })
 
       // Subir a Storage
