@@ -164,16 +164,9 @@ export default function OrderActions({ order }: Props) {
     setError(null)
 
     try {
-      // Obtener sesión actual sin validaciones bloqueantes en el cliente
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-
+      // Llamada directa al servidor sin validación de token en el cliente para evitar bloqueos
       const res = await fetch(`/api/orders/${order.id}/approve`, {
         method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
       })
 
       const result = await res.json()
@@ -192,12 +185,11 @@ export default function OrderActions({ order }: Props) {
         setLocalOrder(result.order)
       }
       
-      // Refresh server data
       setIsApproved(true)
       setShowSuccess(true)
       router.refresh()
     } catch (err) {
-      setError('Error de conexión al aprobar')
+      setError('Error de conexión al aprobar. Por favor, revisá tu internet.')
     } finally {
       setLoading(null)
     }
