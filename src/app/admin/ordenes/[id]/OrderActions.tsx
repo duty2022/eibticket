@@ -165,7 +165,18 @@ export default function OrderActions({ order }: Props) {
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      if (!session) {
+        // Si no hay sesión, intentar refrescar
+        const { data: refreshData } = await supabase.auth.refreshSession()
+        if (!refreshData.session) {
+          setError('Tu sesión expiró. Por favor, volvé a ingresar.')
+          setLoading(null)
+          return
+        }
+      }
+      
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      const token = currentSession?.access_token
 
       const res = await fetch(`/api/orders/${order.id}/approve`, {
         method: 'POST',
