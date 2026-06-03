@@ -25,40 +25,31 @@ export async function POST(
 
     if (ticketsError || !tickets) return NextResponse.json({ error: 'Tickets no encontrados' }, { status: 404 })
 
-    // 2. Procesar tickets uno por uno
+    // 2. Procesar tickets
     const updatedTickets = []
     for (const ticket of tickets) {
-      const version = Date.now()
-      const qrPath = `qrs/${ticket.qr_code}.png`
       const url = `${process.env.NEXT_PUBLIC_APP_URL}/validate/${ticket.qr_code}`
       
-      // Generar QR Buffer (Tamaño optimizado)
-      const qrBuffer = await QRCode.toBuffer(url, {
+      // GENERAR DATA URL (BASE64) DIRECTAMENTE
+      const qrDataUrl = await QRCode.toDataURL(url, {
         width: 300,
         margin: 2,
         errorCorrectionLevel: 'M',
       })
 
-      // Subir a Storage con cache-control 0
-      await supabaseAdmin.storage
+      // Actualizar ticket con la imagen en base64 directamente en el campo qr_url
+      // Esto elimina la dependencia de Supabase Storage para la visualización inmediata
+      const { data: ut, error: utError } = await supabaseAdmin
         .from('tickets')
-        .upload(qrPath, qrBuffer, { 
-          contentType: 'image/png', 
-          upsert: true,
-          cacheControl: '0'
+        .update({ 
+          status: 'valid', 
+          qr_url: qrDataUrl // Guardamos la imagen completa en la base de datos
         })
-
-      const { data: qrUrl } = supabaseAdmin.storage.from('tickets').getPublicUrl(qrPath)
-      const finalQrUrl = `${qrUrl.publicUrl}?v=${version}`
-
-      // Actualizar ticket
-      const { data: ut } = await supabaseAdmin
-        .from('tickets')
-        .update({ status: 'valid', qr_url: finalQrUrl })
         .eq('id', ticket.id)
         .select()
         .single()
       
+      if (utError) console.error('Error actualizando ticket:', utError)
       updatedTickets.push(ut)
     }
 
@@ -82,7 +73,7 @@ export async function POST(
       order: updatedOrder
     })
   } catch (error: any) {
-    console.error('Error:', error)
+    console.error('Error crítico:', error)
     return NextResponse.json({ error: 'Error al procesar' }, { status: 500 })
   }
 }
