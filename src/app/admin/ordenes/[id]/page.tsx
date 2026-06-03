@@ -146,6 +146,11 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                     <a href={ticketUrl} target="_blank" className="text-[10px] text-blue-500 hover:underline block mt-1 truncate">
                       {ticketUrl}
                     </a>
+                    {ticket.qr_url && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-lg inline-block">
+                        <img src={ticket.qr_url} alt="QR" className="w-20 h-20" />
+                      </div>
+                    )}
                   </div>
                   
                   {order.buyer_phone && (
