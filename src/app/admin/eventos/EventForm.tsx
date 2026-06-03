@@ -9,27 +9,25 @@ import { createEventWithBypass, updateEventWithBypass, uploadImage } from './act
 import { Plus, Trash2, Upload, Link as LinkIcon } from 'lucide-react'
 
 const ticketTypeSchema = z.object({
-  id: z.string().optional(),
   name: z.string().min(1, 'Requerido'),
   price: z.number().min(0),
   capacity: z.number().int().min(1),
-  description: z.string().nullish(),
-  sold: z.number().optional(),
+  description: z.string().optional(),
 })
 
 const schema = z.object({
   title: z.string().min(2, 'Título requerido'),
-  description: z.string().nullish(),
+  description: z.string().optional(),
   location: z.string().min(2, 'Ubicación requerida'),
-  address: z.string().nullish(),
+  address: z.string().optional(),
   starts_at: z.string().min(1, 'Fecha requerida'),
-  ends_at: z.string().nullish(),
+  ends_at: z.string().optional(),
   country_id: z.enum(['AR', 'MX', 'CR', 'PY']),
   status: z.enum(['draft', 'published']),
-  banner_url_link: z.string().nullish(),
-  payment_label: z.string().nullish(),
-  payment_instructions: z.string().nullish(),
-  payment_holder: z.string().nullish(),
+  banner_url_link: z.string().optional(),
+  payment_label: z.string().optional(),
+  payment_instructions: z.string().optional(),
+  payment_holder: z.string().optional(),
   ticket_types: z.array(ticketTypeSchema).min(1, 'Agregá al menos un tipo de ticket'),
 })
 
@@ -143,7 +141,7 @@ export default function EventForm({ initialData, eventId }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit, (errs) => { console.log(errs); setError('Hay errores en el formulario: ' + Object.keys(errs).join(', ')); })} className="space-y-6 text-gray-900">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-gray-900">
       {/* Banner */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
         <h2 className="font-bold text-gray-900">Imagen del evento</h2>
@@ -374,4 +372,3 @@ export default function EventForm({ initialData, eventId }: Props) {
     </form>
   )
 }
-
