@@ -119,6 +119,53 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         </div>
       )}
 
+      {/* Tickets generados (si está aprobada) */}
+      {order.status === 'approved' && order.tickets && order.tickets.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-gray-900">Pases QR generados</h2>
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+              {order.tickets.length} pases
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-3">
+            {order.tickets.map((ticket: any, index: number) => {
+              const ticketUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/order/${order.id}#ticket-${index}`
+              const message = `¡Hola ${order.buyer_name}! 👋 Acá tenés tu pase QR para *${order.event.title}*: ${ticketUrl}`
+              const phone = order.buyer_phone?.replace(/\D/g, '')
+              const whatsappUrl = phone 
+                ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+                : null
+
+              return (
+                <div key={ticket.id} className="flex items-center justify-between p-3 border border-gray-50 rounded-xl bg-gray-50/50">
+                  <div className="min-w-0 flex-1 pr-2">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="font-semibold text-sm text-gray-900 truncate">
+                        {ticket.attendee_name || `Pase ${index + 1}`}
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-gray-400 font-mono truncate">{ticket.qr_code}</p>
+                  </div>
+                  
+                  {order.buyer_phone && (
+                    <a 
+                      href={whatsappUrl}
+                      target="_blank"
+                      className="flex-shrink-0 flex items-center gap-2 px-3 py-2 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-xl text-xs font-bold transition shadow-sm"
+                    >
+                      <Phone className="w-3 h-3" />
+                      Enviar
+                    </a>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Acciones */}
       <OrderActions order={order} />
     </div>
