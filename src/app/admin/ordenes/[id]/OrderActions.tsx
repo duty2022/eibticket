@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle, XCircle, Loader, Phone, ExternalLink } from 'lucide-react'
+import { CheckCircle, XCircle, Loader, Phone, ExternalLink, Download, Ticket } from 'lucide-react'
 
 type Props = {
   order: any
@@ -16,9 +16,14 @@ export default function OrderActions({ order }: Props) {
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [isApproved, setIsApproved] = useState(order.status === 'approved')
 
-  // Pantalla de éxito (solo se muestra inmediatamente después de aprobar)
-  if (showSuccess) {
+  useEffect(() => {
+    setIsApproved(order.status === 'approved')
+  }, [order.status])
+
+  // Pantalla de éxito (se muestra al aprobar o si el usuario quiere ver los tickets de una orden ya aprobada)
+  if (showSuccess || (isApproved && showSuccess)) {
     const orderUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/order/${order.id}`
     const message = `¡Hola ${order.buyer_name}! 👋 Tu pago para *${order.event.title}* ha sido aprobado. Acá tenés tus pases QR: ${orderUrl}`
     const phone = order.buyer_phone?.replace(/\D/g, '')
@@ -38,18 +43,42 @@ export default function OrderActions({ order }: Props) {
             Se generaron {order.tickets?.length} pases QR para {order.buyer_name}.
           </p>
           
-          {/* Visualización de tickets */}
+          {/* Visualización de tickets con QR visible y descarga */}
           <div className="w-full space-y-3 mb-8">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Pases generados</p>
             {order.tickets?.map((t: any, i: number) => (
-              <div key={t.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center justify-between">
-                <div className="min-w-0">
-                  <p className="font-bold text-sm text-gray-900 truncate">{t.attendee_name || `Pase ${i+1}`}</p>
-                  <p className="text-[10px] text-gray-400 font-mono truncate">{t.qr_code}</p>
+              <div key={t.id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col items-center gap-4">
+                <div className="w-full flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm text-gray-900 truncate">{t.attendee_name || `Pase ${i+1}`}</p>
+                    <p className="text-[10px] text-gray-400 font-mono truncate">{t.qr_code}</p>
+                  </div>
+                  <div className="flex-shrink-0 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full">
+                    VÁLIDO
+                  </div>
                 </div>
-                <div className="flex-shrink-0 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full">
-                  VÁLIDO
-                </div>
+                
+                {t.qr_url ? (
+                  <div className="relative group">
+                    <img 
+                      src={t.qr_url} 
+                      alt="QR" 
+                      className="w-48 h-48 bg-white p-2 rounded-xl shadow-sm border border-gray-100"
+                    />
+                    <a 
+                      href={t.qr_url}
+                      download={`ticket-${t.qr_code}.png`}
+                      className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur shadow-md rounded-full text-gray-700 hover:text-indigo-600 transition"
+                      title="Descargar QR"
+                    >
+                      <Download className="w-4 h-4" />
+                    </a>
+                  </div>
+                ) : (
+                  <div className="w-48 h-48 bg-gray-100 animate-pulse rounded-xl flex items-center justify-center">
+                    <Loader className="w-6 h-6 text-gray-300 animate-spin" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -96,14 +125,24 @@ export default function OrderActions({ order }: Props) {
     )
   }
 
-  if (order.status !== 'reviewing' && order.status !== 'pending') {
+  if (isApproved && !showSuccess) {
     return (
-      <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 text-center">
-        <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-3" />
-        <p className="text-sm font-medium text-gray-500">
-          Esta orden ya está <span className="font-bold uppercase text-green-600">Aprobada</span>
-        </p>
-        <p className="text-xs text-gray-400 mt-1">Los tickets ya fueron generados y el stock actualizado.</p>
+      <div className="space-y-4">
+        <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-green-900">Pago aprobado</p>
+            <p className="text-xs text-green-700">Los pases ya fueron generados.</p>
+          </div>
+        </div>
+        
+        <button
+          onClick={() => setShowSuccess(true)}
+          className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
+        >
+          <Ticket className="w-5 h-5" />
+          Ver y Compartir Pases
+        </button>
       </div>
     )
   }
