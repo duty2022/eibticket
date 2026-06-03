@@ -19,9 +19,12 @@ export async function sendTicketEmail({ to, buyerName, eventName, orderId }: Sen
   const resend = new Resend(apiKey);
   const ticketUrl = `${appUrl}/order/${orderId}`;
 
+  // Usamos el dominio por defecto de Resend para asegurar la entrega si el dominio personalizado no está validado
+  const fromEmail = 'EIB Ticket <onboarding@resend.dev>';
+
   try {
     const { data, error } = await resend.emails.send({
-      from: 'EIB Ticket <tickets@eibinternacional.com>',
+      from: fromEmail,
       to: [to],
       subject: `¡Tu pago para ${eventName} ha sido aprobado! 🎫`,
       html: `
@@ -45,7 +48,7 @@ export async function sendTicketEmail({ to, buyerName, eventName, orderId }: Sen
     })
 
     if (error) {
-      console.error('Resend error:', error)
+      console.error('Resend error details:', error)
       return { success: false, error }
     }
 
