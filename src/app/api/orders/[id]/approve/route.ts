@@ -25,30 +25,36 @@ export async function POST(
 
     if (ticketsError || !tickets) return NextResponse.json({ error: 'Tickets no encontrados' }, { status: 404 })
 
-    // 2. Procesar tickets uno por uno (Sencillo)
+    // 2. Procesar tickets uno por uno
     const updatedTickets = []
     for (const ticket of tickets) {
+      const version = Date.now()
       const qrPath = `qrs/${ticket.qr_code}.png`
       const url = `${process.env.NEXT_PUBLIC_APP_URL}/validate/${ticket.qr_code}`
       
-      // Generar QR Buffer directamente con tamaño reducido
+      // Generar QR Buffer (Tamaño optimizado)
       const qrBuffer = await QRCode.toBuffer(url, {
-        width: 250, // Reducido de 400 a 250
-        margin: 1,  // Margen mínimo
-        errorCorrectionLevel: 'M', // Nivel medio para que el código sea menos denso y más rápido de generar/leer
+        width: 300,
+        margin: 2,
+        errorCorrectionLevel: 'M',
       })
 
-      // Subir a Storage
+      // Subir a Storage con cache-control 0
       await supabaseAdmin.storage
         .from('tickets')
-        .upload(qrPath, qrBuffer, { contentType: 'image/png', upsert: true })
+        .upload(qrPath, qrBuffer, { 
+          contentType: 'image/png', 
+          upsert: true,
+          cacheControl: '0'
+        })
 
       const { data: qrUrl } = supabaseAdmin.storage.from('tickets').getPublicUrl(qrPath)
+      const finalQrUrl = `${qrUrl.publicUrl}?v=${version}`
 
       // Actualizar ticket
       const { data: ut } = await supabaseAdmin
         .from('tickets')
-        .update({ status: 'valid', qr_url: qrUrl.publicUrl })
+        .update({ status: 'valid', qr_url: finalQrUrl })
         .eq('id', ticket.id)
         .select()
         .single()
