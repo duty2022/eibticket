@@ -16,24 +16,27 @@ export default function OrderActions({ order }: Props) {
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [localOrder, setLocalOrder] = useState(order)
   const [isApproved, setIsApproved] = useState(order.status === 'approved')
   const [localTickets, setLocalTickets] = useState<any[]>(order.tickets || [])
 
   useEffect(() => {
     setIsApproved(order.status === 'approved')
     setLocalTickets(order.tickets || [])
-  }, [order.status, order.tickets])
+    setLocalOrder(order)
+  }, [order.status, order.tickets, order])
 
   // Pantalla de éxito (se muestra al aprobar o si el usuario quiere ver los tickets de una orden ya aprobada)
   if (showSuccess || (isApproved && showSuccess)) {
-    const orderUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/order/${order.id}`
-    const message = `¡Hola ${order.buyer_name}! 👋 Tu pago para *${order.event.title}* ha sido aprobado. Acá tenés tus pases QR: ${orderUrl}`
-    const phone = order.buyer_phone?.replace(/\D/g, '')
+    const activeOrder = localOrder || order
+    const orderUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/order/${activeOrder.id}`
+    const message = `¡Hola ${activeOrder.buyer_name}! 👋 Tu pago para *${activeOrder.event?.title}* ha sido aprobado. Acá tenés tus pases QR: ${orderUrl}`
+    const phone = activeOrder.buyer_phone?.replace(/\D/g, '')
     const whatsappUrl = phone 
       ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
       : null
 
-    const displayTickets = localTickets.length > 0 ? localTickets : order.tickets || []
+    const displayTickets = localTickets.length > 0 ? localTickets : activeOrder.tickets || []
 
     return (
       <div className="fixed inset-0 z-50 bg-white flex flex-col p-6 overflow-y-auto animate-in fade-in zoom-in duration-300">
@@ -44,7 +47,7 @@ export default function OrderActions({ order }: Props) {
           
           <h1 className="text-3xl font-bold text-gray-900 mb-2">¡Orden Aprobada!</h1>
           <p className="text-gray-500 mb-8 text-center">
-            Se generaron {order.tickets?.length} pases QR para {order.buyer_name}.
+            Se generaron {displayTickets.length} pases QR para {activeOrder.buyer_name}.
           </p>
           
           {/* Visualización de tickets con QR visible y descarga */}
@@ -174,6 +177,10 @@ export default function OrderActions({ order }: Props) {
 
       if (result.tickets) {
         setLocalTickets(result.tickets)
+      }
+      
+      if (result.order) {
+        setLocalOrder(result.order)
       }
       
       // Refresh server data
