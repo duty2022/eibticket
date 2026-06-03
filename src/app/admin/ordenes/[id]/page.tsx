@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import OrderActions from './OrderActions'
-import { ArrowLeft, User, Mail, Phone, Calendar, Ticket, MessageCircle } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, Calendar, Ticket } from 'lucide-react'
 import Link from 'next/link'
 
 async function getOrder(id: string) {
@@ -116,57 +116,6 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               Recibido el {format(new Date(order.receipt_uploaded_at), "d MMM yyyy, HH:mm", { locale: es })}
             </p>
           )}
-        </div>
-      )}
-
-      {/* QR tickets generados */}
-      {order.tickets?.some((t: any) => t.status === 'valid' || t.status === 'used') && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h2 className="font-bold text-gray-900 mb-3">Tickets generados</h2>
-          <div className="space-y-4">
-            {order.tickets.map((ticket: any) => {
-              const ticketUrl = `https://eibticket.vercel.app/ticket/${ticket.qr_code}`
-              const whatsappText = encodeURIComponent(
-                `¡Hola ${order.buyer_name}! 👋 Acá tenés tu ticket para *${order.event?.title}*.\n\nPuedes verlo y descargar el QR aquí:\n${ticketUrl}`
-              )
-              const whatsappUrl = `https://wa.me/${order.buyer_phone?.replace(/\+/g, '')}?text=${whatsappText}`
-
-              return (
-                <div key={ticket.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 last:pb-0">
-                  <div className="min-w-0 flex-1 pr-4">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <p className="text-sm font-bold text-gray-800 truncate">{ticket.attendee_name}</p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
-                        ticket.status === 'used' ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700'
-                      }`}>
-                        {ticket.status === 'used' ? 'Usado' : 'Válido'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-400 font-mono truncate">{ticket.qr_code.slice(0, 8)}...</p>
-                    <a href={ticketUrl} target="_blank" className="text-[10px] text-blue-500 hover:underline block mt-1 truncate">
-                      {ticketUrl}
-                    </a>
-                    {ticket.qr_url && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded-lg inline-block">
-                        <img src={ticket.qr_url} alt="QR" className="w-20 h-20" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  {order.buyer_phone && (
-                    <a 
-                      href={whatsappUrl}
-                      target="_blank"
-                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-bold transition shadow-sm"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      Enviar
-                    </a>
-                  )}
-                </div>
-              )
-            })}
-          </div>
         </div>
       )}
 
