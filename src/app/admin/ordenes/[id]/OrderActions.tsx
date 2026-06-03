@@ -21,19 +21,18 @@ export default function OrderActions({ order }: Props) {
   const [localTickets, setLocalTickets] = useState<any[]>(order.tickets || [])
 
   useEffect(() => {
-    // Solo actualizar estados locales si la orden cambia o el estado es distinto
-    if (order.id !== localOrder?.id || order.status !== localOrder?.status) {
-      setLocalOrder(order)
-      setLocalTickets(order.tickets || [])
-      setIsApproved(order.status === 'approved')
-      
-      if (order.status === 'approved') {
-        setShowSuccess(true)
-      } else {
-        setShowSuccess(false)
-      }
+    // Sincronizar estados locales con los cambios de la orden (desde el servidor o handleApprove)
+    setLocalOrder(order)
+    setLocalTickets(order.tickets || [])
+    setIsApproved(order.status === 'approved')
+    
+    // Si la orden ya está aprobada, forzar la pantalla de éxito
+    if (order.status === 'approved') {
+      setShowSuccess(true)
+    } else {
+      setShowSuccess(false)
     }
-  }, [order.id, order.status])
+  }, [order.id, order.status, order.tickets])
 
   // Pantalla de éxito (se muestra al aprobar o si el usuario quiere ver los tickets de una orden ya aprobada)
   if (showSuccess || (isApproved && showSuccess)) {
