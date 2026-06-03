@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle, XCircle, Loader, Phone, ExternalLink, Download, Ticket } from 'lucide-react'
+import { CheckCircle, XCircle, Loader, Phone, ExternalLink, Download, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 type Props = {
   order: any
@@ -15,159 +16,24 @@ export default function OrderActions({ order }: Props) {
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showSuccess, setShowSuccess] = useState(false)
+  
+  // Estados locales
+  const [showSuccess, setShowSuccess] = useState(order.status === 'approved')
   const [localOrder, setLocalOrder] = useState(order)
-  const [isApproved, setIsApproved] = useState(order.status === 'approved')
   const [localTickets, setLocalTickets] = useState<any[]>(order.tickets || [])
 
+  // Sincronizar si cambian las props
   useEffect(() => {
-    // Sincronizar estados locales con los cambios de la orden (desde el servidor o handleApprove)
     setLocalOrder(order)
     setLocalTickets(order.tickets || [])
-    setIsApproved(order.status === 'approved')
-    
-    // Si la orden ya está aprobada, forzar la pantalla de éxito
-    if (order.status === 'approved') {
-      setShowSuccess(true)
-    } else {
-      setShowSuccess(false)
-    }
-  }, [order.id, order.status, order.tickets])
-
-  // Pantalla de éxito (se muestra al aprobar o si el usuario quiere ver los tickets de una orden ya aprobada)
-  if (showSuccess || (isApproved && showSuccess)) {
-    const activeOrder = localOrder || order
-    const orderUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/order/${activeOrder.id}`
-    const message = `¡Hola ${activeOrder.buyer_name}! 👋 Tu pago para *${activeOrder.event?.title}* ha sido aprobado. Acá tenés tus pases QR: ${orderUrl}`
-    const phone = activeOrder.buyer_phone?.replace(/\D/g, '')
-    const whatsappUrl = phone 
-      ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-      : null
-
-    const displayTickets = localTickets.length > 0 ? localTickets : activeOrder.tickets || []
-
-    return (
-      <div className="fixed inset-0 z-50 bg-white flex flex-col p-6 overflow-y-auto animate-in fade-in zoom-in duration-300">
-        <div className="flex-1 flex flex-col items-center justify-center max-w-sm mx-auto w-full py-10">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm shadow-green-100">
-            <CheckCircle className="w-12 h-12 text-green-600" />
-          </div>
-          
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">¡Orden Aprobada!</h1>
-          <p className="text-gray-500 mb-8 text-center">
-            Se generaron {displayTickets.length} pases QR para {activeOrder.buyer_name}.
-          </p>
-          
-          {/* Visualización de tickets con QR visible y descarga */}
-          <div className="w-full space-y-3 mb-8">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Pases generados</p>
-            {displayTickets?.map((t: any, i: number) => (
-              <div key={t.id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col items-center gap-4">
-                <div className="w-full flex items-center justify-between">
-                  <div className="min-w-0">
-                    <p className="font-bold text-sm text-gray-900 truncate">{t.attendee_name || `Pase ${i+1}`}</p>
-                    <p className="text-[10px] text-gray-400 font-mono truncate">{t.qr_code}</p>
-                  </div>
-                  <div className="flex-shrink-0 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full">
-                    VÁLIDO
-                  </div>
-                </div>
-                
-                {t.qr_url ? (
-                  <div className="relative group">
-                    <img 
-                      src={t.qr_url} 
-                      alt="QR" 
-                      className="w-48 h-48 bg-white p-2 rounded-xl shadow-sm border border-gray-100"
-                    />
-                    <a 
-                      href={t.qr_url}
-                      download={`ticket-${t.qr_code}.png`}
-                      className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur shadow-md rounded-full text-gray-700 hover:text-indigo-600 transition"
-                      title="Descargar QR"
-                    >
-                      <Download className="w-4 h-4" />
-                    </a>
-                  </div>
-                ) : (
-                  <div className="w-48 h-48 bg-gray-100 animate-pulse rounded-xl flex items-center justify-center">
-                    <Loader className="w-6 h-6 text-gray-300 animate-spin" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="w-full space-y-3">
-            {whatsappUrl && (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-3 w-full py-4 bg-[#25D366] text-white font-bold rounded-2xl hover:bg-[#128C7E] transition shadow-lg shadow-green-100"
-              >
-                <Phone className="w-5 h-5" />
-                Enviar todo por WhatsApp
-              </a>
-            )}
-            
-            <a
-              href={orderUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-3 w-full py-4 bg-blue-50 text-blue-600 font-bold rounded-2xl hover:bg-blue-100 transition"
-            >
-              <ExternalLink className="w-5 h-5" />
-              Ver pases del cliente
-            </a>
-            
-            <button
-              onClick={() => setShowSuccess(false)}
-              className="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl hover:bg-gray-800 transition"
-            >
-              Ver detalles de la orden
-            </button>
-
-            <button
-              onClick={() => router.push('/admin/ordenes')}
-              className="w-full py-3 text-gray-400 font-medium hover:text-gray-600 transition mt-4"
-            >
-              Volver al listado
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (isApproved && !showSuccess) {
-    return (
-      <div className="space-y-4">
-        <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-green-900">Pago aprobado</p>
-            <p className="text-xs text-green-700">Los pases ya fueron generados.</p>
-          </div>
-        </div>
-        
-        <button
-          onClick={() => setShowSuccess(true)}
-          className="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
-        >
-          <Ticket className="w-5 h-5" />
-          Ver y Compartir Pases
-        </button>
-      </div>
-    )
-  }
+    setShowSuccess(order.status === 'approved')
+  }, [order.id, order.status])
 
   const handleApprove = async () => {
     setLoading('approve')
     setError(null)
 
     try {
-      // Llamada directa al servidor sin validación de token en el cliente para evitar bloqueos
       const res = await fetch(`/api/orders/${order.id}/approve`, {
         method: 'POST',
       })
@@ -180,17 +46,10 @@ export default function OrderActions({ order }: Props) {
         return
       }
 
-      if (result.tickets) {
-        setLocalTickets(result.tickets)
-      }
+      if (result.tickets) setLocalTickets(result.tickets)
+      if (result.order) setLocalOrder(result.order)
       
-      if (result.order) {
-        setLocalOrder(result.order)
-      }
-      
-      setIsApproved(true)
       setShowSuccess(true)
-      router.refresh()
     } catch (err) {
       setError('Error de conexión al aprobar. Por favor, revisá tu internet.')
     } finally {
@@ -221,34 +80,128 @@ export default function OrderActions({ order }: Props) {
     setLoading(null)
   }
 
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-      <h2 className="font-bold text-gray-900">Acciones</h2>
+  if (showSuccess) {
+    const activeOrder = localOrder || order
+    const orderUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/order/${activeOrder.id}`
+    const message = `¡Hola ${activeOrder.buyer_name}! 👋 Tu pago para *${activeOrder.event?.title}* ha sido aprobado. Acá tenés tus pases QR: ${orderUrl}`
+    const phone = activeOrder.buyer_phone?.replace(/\D/g, '')
+    const whatsappUrl = phone 
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+      : null
 
+    const displayTickets = localTickets.length > 0 ? localTickets : activeOrder.tickets || []
+
+    return (
+      <div className="fixed inset-0 z-50 bg-white flex flex-col p-6 overflow-y-auto animate-in fade-in zoom-in duration-300">
+        <div className="flex-1 flex flex-col items-center justify-center max-w-sm mx-auto w-full py-10">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm shadow-green-100">
+            <CheckCircle className="w-12 h-12 text-green-600" />
+          </div>
+          
+          <h2 className="text-2xl font-black text-gray-900 mb-2 text-center">¡Orden Aprobada!</h2>
+          <p className="text-gray-500 text-center mb-8">Los pases ya están listos para compartir.</p>
+
+          <div className="w-full space-y-4 mb-10">
+            {displayTickets.map((t: any, i: number) => (
+              <div key={t.id} className="relative bg-gray-50 border border-gray-100 rounded-2xl p-4 flex flex-col items-center shadow-sm">
+                <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-3">Pase {i + 1}</p>
+                {t.qr_url ? (
+                  <div className="relative group">
+                    <img 
+                      src={t.qr_url} 
+                      alt="QR Code" 
+                      className="w-48 h-48 rounded-xl shadow-inner bg-white p-2"
+                    />
+                    <a 
+                      href={t.qr_url}
+                      download={`ticket-${t.qr_code}.png`}
+                      className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur shadow-md rounded-full text-gray-700 hover:text-indigo-600 transition"
+                      title="Descargar QR"
+                    >
+                      <Download className="w-4 h-4" />
+                    </a>
+                  </div>
+                ) : (
+                  <div className="w-48 h-48 bg-gray-100 animate-pulse rounded-xl flex items-center justify-center">
+                    <Loader className="w-6 h-6 text-gray-300 animate-spin" />
+                  </div>
+                )}
+                <p className="mt-3 font-mono text-[10px] text-gray-400">{t.qr_code}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="w-full space-y-3">
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-3 w-full py-4 bg-[#25D366] text-white font-bold rounded-2xl hover:bg-[#128C7E] transition shadow-lg shadow-green-100"
+              >
+                <Phone className="w-5 h-5" />
+                Enviar todo por WhatsApp
+              </a>
+            )}
+            
+            <Link 
+              href={`/order/${activeOrder.id}`}
+              target="_blank"
+              className="flex items-center justify-center gap-3 w-full py-4 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 transition"
+            >
+              <ExternalLink className="w-5 h-5" />
+              Ver como el cliente
+            </Link>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => {
+            setShowSuccess(false)
+            router.refresh()
+          }}
+          className="mt-auto py-4 text-gray-400 text-sm font-medium hover:text-gray-600 transition flex items-center justify-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Volver a la orden
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white border-t border-gray-100 p-6 space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+        <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100 flex items-center gap-3">
+          <XCircle className="w-5 h-5" />
           {error}
         </div>
       )}
 
       {!showRejectForm ? (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <button
             onClick={handleApprove}
             disabled={!!loading}
-            className="w-full flex items-center justify-center gap-2 py-4 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 disabled:opacity-60 transition text-lg shadow-sm shadow-green-100"
+            className="w-full py-4 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 disabled:opacity-60 transition shadow-lg shadow-green-100 flex items-center justify-center gap-2"
           >
             {loading === 'approve' ? (
-              <Loader className="w-6 h-6 animate-spin" />
+              <>
+                <Loader className="w-5 h-5 animate-spin" />
+                Procesando...
+              </>
             ) : (
-              <CheckCircle className="w-6 h-6" />
+              <>
+                <CheckCircle className="w-5 h-5" />
+                Aprobar y Generar QR
+              </>
             )}
-            Aprobar y generar QR
           </button>
+          
           <button
             onClick={() => setShowRejectForm(true)}
             disabled={!!loading}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-400 font-bold rounded-2xl hover:bg-gray-50 disabled:opacity-60 transition"
+            className="w-full py-4 bg-white text-red-600 font-bold rounded-2xl border-2 border-red-50 hover:bg-red-50 disabled:opacity-60 transition flex items-center justify-center gap-2"
           >
             <XCircle className="w-5 h-5" />
             Rechazar orden
