@@ -136,7 +136,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               const phone = order.buyer_phone?.replace(/\D/g, '')
               const whatsappUrl = phone 
                 ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-                : null
+                : undefined
 
               return (
                 <div key={ticket.id} className="flex items-center justify-between p-3 border border-gray-50 rounded-xl bg-gray-50/50">
