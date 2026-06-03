@@ -12,17 +12,15 @@ export async function POST(
     // Verificar autenticación del organizador
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error('No auth header')
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
     const token = authHeader.replace('Bearer ', '')
-    const supabaseUser = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
 
     if (authError || !user) {
+      console.error('Auth error or no user:', authError)
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
