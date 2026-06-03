@@ -46,16 +46,25 @@ export async function POST(
       tickets.map(async (ticket) => {
         const qrPath = `qrs/${ticket.qr_code}.png`
         
-        // Generar imagen del QR
-        const qrBuffer = await generateQRImage(ticket.qr_code)
+        // Generar imagen del QR (dataURL en base64)
+        const qrDataUrl = await generateQRImage(ticket.qr_code)
+        
+        // Convertir dataURL a Buffer para subir a Supabase
+        // El dataURL viene como 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...'
+        const base64Data = qrDataUrl.split(',')[1]
+        const qrBuffer = Buffer.from(base64Data, 'base64')
         
         // Subir a Storage
-        await supabaseAdmin.storage
+        const { error: uploadError } = await supabaseAdmin.storage
           .from('tickets')
           .upload(qrPath, qrBuffer, { 
             contentType: 'image/png', 
             upsert: true 
           })
+
+        if (uploadError) {
+          console.error('Error al subir QR:', uploadError)
+        }
 
         // Obtener la URL pública
         const { data: qrUrl } = supabaseAdmin.storage
