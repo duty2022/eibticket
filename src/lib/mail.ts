@@ -16,15 +16,15 @@ export async function sendTicketEmail({ to, buyerName, eventName, orderId }: Sen
     return { success: false, error: 'Configuración de correo faltante' };
   }
 
-  // LOG PARA DEPURACIÓN EN VERCEL
-  console.log(`[MAIL] Intentando enviar a: ${to} para el evento: ${eventName}`);
+  console.log(`[MAIL] Intentando enviar a: ${to}`);
 
   const resend = new Resend(apiKey);
   const ticketUrl = `${appUrl}/order/${orderId}`;
 
   try {
+    // Usamos el remitente exacto de prueba de Resend
     const { data, error } = await resend.emails.send({
-      from: 'EIB Ticket <noreply@resend.dev>',
+      from: 'EIB Ticket <onboarding@resend.dev>',
       to: [to],
       subject: `Tus pases para ${eventName} 🎫`,
       html: `
@@ -48,11 +48,10 @@ export async function sendTicketEmail({ to, buyerName, eventName, orderId }: Sen
     })
 
     if (error) {
-      console.error('[MAIL] Resend Error:', JSON.stringify(error));
+      console.error('[MAIL] Resend Error:', error);
       return { success: false, error };
     }
 
-    console.log('[MAIL] Envío exitoso:', data?.id);
     return { success: true, data };
   } catch (error) {
     console.error('[MAIL] Exception:', error);
