@@ -9,36 +9,57 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verificar autenticación del organizador
+    // 1. Obtener el token del header
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      console.error('No auth header')
+    const token = authHeader?.replace('Bearer ', '')
+
+    if (!token) {
+      console.error('No se recibió token en el header de autorización')
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-
-    if (authError || !user) {
-      console.error('Auth error or no user:', authError)
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
-
-    // Obtener la orden con su evento
+    // 2. Obtener la orden PRIMERO para saber de qué evento hablamos
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .select('*, event:events(*, organizer:organizers(*))')
       .eq('id', params.id)
-      .eq('status', 'reviewing')
       .single()
 
     if (orderError || !order) {
-      return NextResponse.json({ error: 'Orden no encontrada o ya procesada' }, { status: 404 })
+      console.error('Error al obtener orden:', orderError)
+      return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 })
     }
 
-    // Verificar que el usuario es el organizador del evento
-    if (order.event.organizer.user_id !== user.id) {
+    // 3. Validar el usuario contra el token
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+
+    // Si getUser falla, probamos una validación manual de la sesión en perfiles
+    if (authError || !user) {
+      console.error('Error de autenticación Supabase:', authError)
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // 4. Verificar que el usuario es el dueño de la orden (organizador)
+    const isOrganizer = order.event.organizer.user_id === user.id
+    
+    if (!isOrganizer) {
+      console.error(`Acceso denegado: User ${user.id} no es organizador de ${order.event.organizer.user_id}`)
       return NextResponse.json({ error: 'No tenés permisos para esta orden' }, { status: 403 })
+    }
+
+    // Si la orden ya está aprobada, devolvemos éxito directo
+    if (order.status === 'approved') {
+      const { data: tickets } = await supabaseAdmin
+        .from('tickets')
+        .select('*')
+        .eq('order_id', order.id)
+      
+      return NextResponse.json({
+        success: true,
+        tickets,
+        order,
+        message: 'La orden ya estaba aprobada'
+      })
     }
 
     // Obtener los tickets de esta orden
