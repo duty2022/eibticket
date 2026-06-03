@@ -31,15 +31,7 @@ export async function createEventWithBypass(eventData: any, ticketTypes: any[]) 
       .single()
     if (eventError) throw eventError
 
-    const tickets = ticketTypes.map(tt => ({
-      name: tt.name,
-      price: tt.price,
-      capacity: tt.capacity,
-      description: tt.description || null,
-      event_id: event.id,
-      sold: 0
-    }))
-    
+    const tickets = ticketTypes.map(tt => ({ ...tt, event_id: event.id, sold: 0 }))
     const { error: ticketsError } = await supabaseAdmin
       .from('ticket_types')
       .insert(tickets)
@@ -65,15 +57,7 @@ export async function updateEventWithBypass(eventId: string, eventData: any, tic
     // Re-insert ticket types (delete old ones first)
     await supabaseAdmin.from('ticket_types').delete().eq('event_id', eventId)
     
-    const tickets = ticketTypes.map(tt => ({
-      name: tt.name,
-      price: tt.price,
-      capacity: tt.capacity,
-      description: tt.description || null,
-      event_id: eventId,
-      sold: tt.sold || 0
-    }))
-
+    const tickets = ticketTypes.map(tt => ({ ...tt, event_id: eventId, sold: tt.sold || 0 }))
     const { error: ticketsError } = await supabaseAdmin
       .from('ticket_types')
       .insert(tickets)
