@@ -24,6 +24,11 @@ export default function OrderActions({ order }: Props) {
     setIsApproved(order.status === 'approved')
     setLocalTickets(order.tickets || [])
     setLocalOrder(order)
+    
+    // Si la orden ya está aprobada, mostrar el éxito para ver los QRs
+    if (order.status === 'approved') {
+      setShowSuccess(true)
+    }
   }, [order.status, order.tickets, order])
 
   // Pantalla de éxito (se muestra al aprobar o si el usuario quiere ver los tickets de una orden ya aprobada)
