@@ -17,10 +17,12 @@ export default function OrderActions({ order }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [isApproved, setIsApproved] = useState(order.status === 'approved')
+  const [localTickets, setLocalTickets] = useState<any[]>(order.tickets || [])
 
   useEffect(() => {
     setIsApproved(order.status === 'approved')
-  }, [order.status])
+    setLocalTickets(order.tickets || [])
+  }, [order.status, order.tickets])
 
   // Pantalla de éxito (se muestra al aprobar o si el usuario quiere ver los tickets de una orden ya aprobada)
   if (showSuccess || (isApproved && showSuccess)) {
@@ -30,6 +32,8 @@ export default function OrderActions({ order }: Props) {
     const whatsappUrl = phone 
       ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
       : null
+
+    const displayTickets = localTickets.length > 0 ? localTickets : order.tickets || []
 
     return (
       <div className="fixed inset-0 z-50 bg-white flex flex-col p-6 overflow-y-auto animate-in fade-in zoom-in duration-300">
@@ -46,7 +50,7 @@ export default function OrderActions({ order }: Props) {
           {/* Visualización de tickets con QR visible y descarga */}
           <div className="w-full space-y-3 mb-8">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Pases generados</p>
-            {order.tickets?.map((t: any, i: number) => (
+            {displayTickets?.map((t: any, i: number) => (
               <div key={t.id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex flex-col items-center gap-4">
                 <div className="w-full flex items-center justify-between">
                   <div className="min-w-0">
@@ -168,7 +172,12 @@ export default function OrderActions({ order }: Props) {
         return
       }
 
-      // Refresh server data to trigger the success screen
+      if (result.tickets) {
+        setLocalTickets(result.tickets)
+      }
+      
+      // Refresh server data
+      setIsApproved(true)
       setShowSuccess(true)
       router.refresh()
     } catch (err) {
