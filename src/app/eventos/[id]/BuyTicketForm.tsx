@@ -6,12 +6,28 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Event, TicketType } from '@/types'
 import PaymentInstructions from '@/components/tickets/PaymentInstructions'
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus, ChevronDown } from 'lucide-react'
+
+const COUNTRIES = [
+  { code: 'AR', name: 'Argentina', prefix: '+54', flag: '🇦🇷' },
+  { code: 'MX', name: 'México', prefix: '+52', flag: '🇲🇽' },
+  { code: 'CR', name: 'Costa Rica', prefix: '+506', flag: '🇨🇷' },
+  { code: 'UY', name: 'Uruguay', prefix: '+598', flag: '🇺🇾' },
+  { code: 'CL', name: 'Chile', prefix: '+56', flag: '🇨🇱' },
+  { code: 'PY', name: 'Paraguay', prefix: '+595', flag: '🇵🇾' },
+  { code: 'BO', prefix: '+591', flag: '🇧🇴', name: 'Bolivia' },
+  { code: 'CO', prefix: '+57', flag: '🇨🇴', name: 'Colombia' },
+  { code: 'PE', prefix: '+51', flag: '🇵🇪', name: 'Perú' },
+  { code: 'EC', prefix: '+593', flag: '🇪🇨', name: 'Ecuador' },
+  { code: 'VE', prefix: '+58', flag: '🇻🇪', name: 'Venezuela' },
+  { code: 'ES', prefix: '+34', flag: '🇪🇸', name: 'España' },
+  { code: 'US', prefix: '+1', flag: '🇺🇸', name: 'EEUU' },
+]
 
 const schema = z.object({
   buyer_name: z.string().min(2, 'Ingresá tu nombre completo'),
   buyer_email: z.string().email('Email inválido'),
-  buyer_phone: z.string().min(8, 'Ingresá tu WhatsApp (incluí código de área)'),
+  buyer_phone: z.string().min(6, 'Ingresá tu número de WhatsApp'),
   ticket_type_id: z.string().uuid('Seleccioná un tipo de pase'),
   quantity: z.number().min(1).max(10),
 })
@@ -25,6 +41,8 @@ type Props = {
 type Step = 'form' | 'payment' | 'done'
 
 export default function BuyTicketForm({ event }: Props) {
+  const defaultCountry = COUNTRIES.find(c => c.code === event.country_id) || COUNTRIES[0]
+  const [countryPrefix, setCountryPrefix] = useState(defaultCountry.prefix)
   const [step, setStep] = useState<Step>('form')
   const [orderId, setOrderId] = useState<string | null>(null)
   const [paymentInfo, setPaymentInfo] = useState<any>(null)
@@ -66,11 +84,22 @@ export default function BuyTicketForm({ event }: Props) {
     setLoading(true)
     setApiError(null)
 
+    // Normalizar número de teléfono: quitar no-dígitos y asegurar código de país
+    const prefixDigits = countryPrefix.replace(/\D/g, '')
+    let cleanNumber = data.buyer_phone.replace(/\D/g, '')
+    
+    // Evitar duplicar el código de área si el usuario ya lo escribió
+    if (cleanNumber.startsWith(prefixDigits) && cleanNumber.length > prefixDigits.length + 5) {
+      cleanNumber = cleanNumber.substring(prefixDigits.length)
+    }
+    
+    const fullPhone = `${prefixDigits}${cleanNumber}`
+
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, event_id: event.id }),
+        body: JSON.stringify({ ...data, buyer_phone: fullPhone, event_id: event.id }),
       })
 
       const result = await res.json()
@@ -231,12 +260,30 @@ export default function BuyTicketForm({ event }: Props) {
           <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1">
             WhatsApp (obligatorio)
           </label>
-          <input
-            {...register('buyer_phone')}
-            type="tel"
-            placeholder="Código de área + número (ej: 549342...)"
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-          />
+          <div className="flex gap-2">
+            <div className="relative">
+              <select
+                value={countryPrefix}
+                onChange={(e) => setCountryPrefix(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 rounded-xl px-3 py-3 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium cursor-pointer"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.prefix}>
+                    {c.flag} {c.prefix}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <ChevronDown size={14} />
+              </div>
+            </div>
+            <input
+              {...register('buyer_phone')}
+              type="tel"
+              placeholder="Número sin código de país"
+              className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            />
+          </div>
           {errors.buyer_phone && (
             <p className="text-red-500 text-xs mt-1">{errors.buyer_phone.message}</p>
           )}
