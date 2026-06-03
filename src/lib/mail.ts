@@ -19,8 +19,8 @@ export async function sendTicketEmail({ to, buyerName, eventName, orderId }: Sen
   const resend = new Resend(apiKey);
   const ticketUrl = `${appUrl}/order/${orderId}`;
 
-  // Usamos el dominio por defecto de Resend para asegurar la entrega si el dominio personalizado no está validado
-  const fromEmail = 'EIB Ticket <onboarding@resend.dev>';
+  // Usamos el dominio de prueba de Resend que ya teníamos configurado en el sistema para asegurar la entrega
+  const fromEmail = 'EIB Ticket <noreply@resend.dev>';
 
   try {
     const { data, error } = await resend.emails.send({
