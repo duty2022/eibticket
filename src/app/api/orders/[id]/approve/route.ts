@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendTicketEmail } from '@/lib/mail'
 import QRCode from 'qrcode'
 
 export async function POST(
@@ -25,25 +26,22 @@ export async function POST(
 
     if (ticketsError || !tickets) return NextResponse.json({ error: 'Tickets no encontrados' }, { status: 404 })
 
-    // 2. Procesar tickets
+    // 2. Procesar tickets (Generar QR y marcar como válidos)
     const updatedTickets = []
     for (const ticket of tickets) {
       const url = `${process.env.NEXT_PUBLIC_APP_URL}/validate/${ticket.qr_code}`
       
-      // GENERAR DATA URL (BASE64) DIRECTAMENTE
       const qrDataUrl = await QRCode.toDataURL(url, {
         width: 300,
         margin: 2,
         errorCorrectionLevel: 'M',
       })
 
-      // Actualizar ticket con la imagen en base64 directamente en el campo qr_url
-      // Esto elimina la dependencia de Supabase Storage para la visualización inmediata
       const { data: ut, error: utError } = await supabaseAdmin
         .from('tickets')
         .update({ 
           status: 'valid', 
-          qr_url: qrDataUrl // Guardamos la imagen completa en la base de datos
+          qr_url: qrDataUrl
         })
         .eq('id', ticket.id)
         .select()
@@ -53,7 +51,7 @@ export async function POST(
       updatedTickets.push(ut)
     }
 
-    // 3. Actualizar orden
+    // 3. Actualizar orden a 'approved'
     const { data: updatedOrder } = await supabaseAdmin
       .from('orders')
       .update({ status: 'approved' })
@@ -61,11 +59,22 @@ export async function POST(
       .select('*, event:events(title, starts_at, location), ticket_type:ticket_types(name)')
       .single()
 
-    // 4. Incrementar contador
+    // 4. Incrementar contador de vendidos en el evento
     await supabaseAdmin.rpc('increment_sold', {
       ticket_type_id: order.ticket_type_id,
       amount: order.quantity,
     })
+
+    // 5. ENVÍO DE EMAIL AUTOMÁTICO
+    if (order.buyer_email) {
+      console.log(`Intentando enviar email a: ${order.buyer_email}`)
+      await sendTicketEmail({
+        to: order.buyer_email,
+        buyerName: order.buyer_name,
+        eventName: order.event?.title || 'Evento',
+        orderId: order.id
+      }).catch(err => console.error('Error en trigger de email:', err))
+    }
 
     return NextResponse.json({
       success: true,
