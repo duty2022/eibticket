@@ -164,17 +164,11 @@ export default function OrderActions({ order }: Props) {
     setError(null)
 
     try {
-      // Intentar obtener sesión actual
-      let { data: { session } } = await supabase.auth.getSession()
+      // Simplificar: Obtener sesión actual sin forzar refrescos complejos
+      const { data: { session } } = await supabase.auth.getSession()
       
       if (!session) {
-        // Forzar un refresh si no hay sesión
-        const { data } = await supabase.auth.refreshSession()
-        session = data.session
-      }
-
-      if (!session) {
-        setError('No se pudo validar tu sesión. Por favor, cerrá sesión y volvé a entrar.')
+        setError('No hay una sesión activa. Por favor, reingresá al sistema.')
         setLoading(null)
         return
       }
@@ -183,7 +177,10 @@ export default function OrderActions({ order }: Props) {
 
       const res = await fetch(`/api/orders/${order.id}/approve`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
       })
 
       const result = await res.json()
