@@ -20,12 +20,8 @@ export async function POST(
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
 
     if (authError || !user) {
-      // Fallback: Check if it's a valid service role token or valid session
-      const { data: { user: adminUser } } = await supabaseAdmin.auth.admin.getUserForAppRawToken(token)
-      if (!adminUser) {
-        console.error('Auth error or no user:', authError)
-        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-      }
+      console.error('Auth error or no user:', authError)
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
     // Obtener la orden con su evento
