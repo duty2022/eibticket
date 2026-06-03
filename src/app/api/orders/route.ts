@@ -1,4 +1,3 @@
-export const dynamic = "force-dynamic"
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateQRCode } from '@/lib/qr'
@@ -9,7 +8,7 @@ const createOrderSchema = z.object({
   ticket_type_id: z.string().uuid(),
   buyer_name: z.string().min(2),
   buyer_email: z.string().email(),
-  buyer_phone: z.string().optional(),
+  buyer_phone: z.string().min(8),
   quantity: z.number().int().min(1).max(10),
 })
 
