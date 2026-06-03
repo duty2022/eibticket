@@ -25,9 +25,11 @@ export default function OrderActions({ order }: Props) {
     setLocalTickets(order.tickets || [])
     setLocalOrder(order)
     
-    // Si la orden ya está aprobada, mostrar el éxito para ver los QRs
+    // Si la orden ya está aprobada, mostrar siempre la pantalla de éxito/compartir
     if (order.status === 'approved') {
       setShowSuccess(true)
+    } else {
+      setShowSuccess(false)
     }
   }, [order.status, order.tickets, order])
 
