@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { CheckCircle, XCircle, Loader } from 'lucide-react'
+import { CheckCircle, XCircle, Loader, Phone } from 'lucide-react'
 
 type Props = {
   order: any
@@ -17,11 +17,34 @@ export default function OrderActions({ order }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   if (order.status === 'approved') {
+    const orderUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/order/${order.id}`
+    const message = `¡Hola! Tu pago ha sido aprobado. Acá tenés tus pases para ${order.event.title}: ${orderUrl}`
+    const phone = order.buyer_phone?.replace(/\D/g, '')
+    const whatsappUrl = phone 
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+      : null
+
     return (
-      <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center">
-        <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
-        <p className="font-semibold text-green-800">Orden aprobada</p>
-        <p className="text-sm text-green-600">Los tickets QR fueron generados y enviados al comprador</p>
+      <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center space-y-4">
+        <div>
+          <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+          <p className="font-semibold text-green-800">Orden aprobada</p>
+          <p className="text-sm text-green-600">Los pases QR ya están disponibles.</p>
+        </div>
+        
+        {whatsappUrl ? (
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-3 bg-[#25D366] text-white font-bold rounded-xl hover:bg-[#128C7E] transition shadow-sm"
+          >
+            <Phone className="w-5 h-5" />
+            Enviar pases por WhatsApp
+          </a>
+        ) : (
+          <p className="text-xs text-gray-500 italic">No se registró teléfono para esta orden.</p>
+        )}
       </div>
     )
   }
