@@ -16,45 +16,46 @@ export async function sendTicketEmail({ to, buyerName, eventName, orderId }: Sen
     return { success: false, error: 'Configuración de correo faltante' };
   }
 
+  // LOG PARA DEPURACIÓN EN VERCEL
+  console.log(`[MAIL] Intentando enviar a: ${to} para el evento: ${eventName}`);
+
   const resend = new Resend(apiKey);
   const ticketUrl = `${appUrl}/order/${orderId}`;
 
-  // Usamos el dominio de prueba de Resend que ya teníamos configurado en el sistema para asegurar la entrega
-  const fromEmail = 'EIB Ticket <noreply@resend.dev>';
-
   try {
     const { data, error } = await resend.emails.send({
-      from: fromEmail,
+      from: 'EIB Ticket <noreply@resend.dev>',
       to: [to],
-      subject: `¡Tu pago para ${eventName} ha sido aprobado! 🎫`,
+      subject: `Tus pases para ${eventName} 🎫`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
           <h2 style="color: #333;">¡Hola, ${buyerName}!</h2>
-          <p style="font-size: 16px; color: #555;">Buenas noticias: tu pago para <strong>${eventName}</strong> ya fue aprobado.</p>
-          <p style="font-size: 16px; color: #555;">Ya podés acceder a tus pases y códigos QR haciendo clic en el siguiente botón:</p>
+          <p style="font-size: 16px; color: #555;">Tu pago para <strong>${eventName}</strong> ha sido confirmado.</p>
+          <p style="font-size: 16px; color: #555;">Podés acceder a tus pases aquí:</p>
           
           <div style="text-align: center; margin: 40px 0;">
             <a href="${ticketUrl}" 
-               style="background: #2563eb; color: white; padding: 18px 32px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 18px; display: inline-block;">
+               style="background: #000000; color: white; padding: 18px 32px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 18px; display: inline-block;">
               Ver mis Pases 🎫
             </a>
           </div>
           
           <p style="font-size: 14px; color: #888; border-top: 1px solid #eee; padding-top: 20px; margin-top: 40px;">
-            Presentá el código QR en la entrada desde tu celular. ¡Que disfrutes el evento!
+            Presentá el código QR en la entrada desde tu celular.
           </p>
         </div>
       `,
     })
 
     if (error) {
-      console.error('Resend error details:', error)
-      return { success: false, error }
+      console.error('[MAIL] Resend Error:', JSON.stringify(error));
+      return { success: false, error };
     }
 
-    return { success: true, data }
+    console.log('[MAIL] Envío exitoso:', data?.id);
+    return { success: true, data };
   } catch (error) {
-    console.error('Mail catch error:', error)
-    return { success: false, error }
+    console.error('[MAIL] Exception:', error);
+    return { success: false, error };
   }
 }
