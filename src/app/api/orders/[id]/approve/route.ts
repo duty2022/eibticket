@@ -1,80 +1,116 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendTicketEmail } from '@/lib/mail'
+import { generateQRImage } from '@/lib/qr'
+import { createClient } from '@supabase/supabase-js'
 
-export const dynamic = "force-dynamic"
-
+// POST /api/orders/[id]/approve — aprobar pago y generar QRs (solo organizadores)
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const orderId = params.id
+    // Verificar autenticación del organizador
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
 
-    // 1. Obtener la orden con tickets y detalles del evento
+    const token = authHeader.replace('Bearer ', '')
+    const supabaseUser = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser(token)
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Obtener la orden con su evento
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
-      .select('*, tickets(*), ticket_types(*, events(*))')
-      .eq('id', orderId)
+      .select('*, event:events(*, organizer:organizers(*))')
+      .eq('id', params.id)
+      .eq('status', 'reviewing')
       .single()
 
     if (orderError || !order) {
-      return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Orden no encontrada o ya procesada' }, { status: 404 })
     }
 
-    if (order.status === 'approved') {
-      return NextResponse.json({ error: 'La orden ya está aprobada' }, { status: 400 })
+    // Verificar que el usuario es el organizador del evento
+    if (order.event.organizer.user_id !== user.id) {
+      return NextResponse.json({ error: 'No tenés permisos para esta orden' }, { status: 403 })
     }
 
-    // 2. Actualizar estado de la orden
-    const { error: updateOrderError } = await supabaseAdmin
+    // Obtener los tickets de esta orden
+    const { data: tickets, error: ticketsError } = await supabaseAdmin
+      .from('tickets')
+      .select('*')
+      .eq('order_id', params.id)
+
+    if (ticketsError || !tickets) {
+      return NextResponse.json({ error: 'Error al obtener los tickets' }, { status: 500 })
+    }
+
+    // Generar QR para cada ticket y actualizar
+    const updatedTickets = await Promise.all(
+      tickets.map(async (ticket) => {
+        const qrDataUrl = await generateQRImage(ticket.qr_code)
+
+        // Subir QR a Storage
+        const qrBuffer = Buffer.from(qrDataUrl.split(',')[1], 'base64')
+        const qrPath = `qrcodes/${ticket.id}.png`
+
+        await supabaseAdmin.storage
+          .from('tikzet')
+          .upload(qrPath, qrBuffer, {
+            contentType: 'image/png',
+            upsert: true,
+          })
+
+        const { data: qrUrl } = supabaseAdmin.storage
+          .from('tikzet')
+          .getPublicUrl(qrPath)
+
+        // Actualizar ticket a válido
+        const { data: updatedTicket } = await supabaseAdmin
+          .from('tickets')
+          .update({
+            status: 'valid',
+            qr_url: qrUrl.publicUrl,
+          })
+          .eq('id', ticket.id)
+          .select()
+          .single()
+
+        return updatedTicket
+      })
+    )
+
+    // Actualizar la orden a aprobada y capturar la data
+    const { data: updatedOrder } = await supabaseAdmin
       .from('orders')
       .update({ status: 'approved' })
-      .eq('id', orderId)
+      .eq('id', params.id)
+      .select('*, event:events(title, starts_at, location), ticket_type:ticket_types(name)')
+      .single()
 
-    if (updateOrderError) throw updateOrderError
+    // Actualizar sold en ticket_type
+    await supabaseAdmin.rpc('increment_sold', {
+      ticket_type_id: order.ticket_type_id,
+      amount: order.quantity,
+    })
 
-    // 3. Generar QRs y activar tickets
-    const tickets = order.tickets || []
-    for (const ticket of tickets) {
-      const qrCode = ticket.qr_code
-      // La URL de validación que el personal de puerta va a escanear
-      const validationUrl = `https://eibticket.vercel.app/validate/${qrCode}`
-      // Generamos el QR usando Google Charts
-      const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=400x400&chl=${encodeURIComponent(validationUrl)}`
-      
-      await supabaseAdmin
-        .from('tickets')
-        .update({ 
-          status: 'valid',
-          qr_url: qrUrl 
-        })
-        .eq('id', ticket.id)
-    }
+    // Notificar por email (opcional) o integrar con API de WhatsApp
 
-    // 4. Actualizar contador de vendidos
-    const currentSold = order.ticket_types?.sold || 0
-    await supabaseAdmin
-      .from('ticket_types')
-      .update({ sold: currentSold + order.quantity })
-      .eq('id', order.ticket_type_id)
-
-    // 5. Enviar email al comprador
-    if (tickets.length > 0) {
-      // Usamos el qr_code del primer ticket para el link principal
-      const ticketUrl = `https://eibticket.vercel.app/ticket/${tickets[0].qr_code}`
-      
-      await sendTicketEmail({
-        to: order.buyer_email,
-        buyerName: order.buyer_name,
-        eventName: order.ticket_types.events.name,
-        ticketUrl: ticketUrl
-      })
-    }
-
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('Approve error:', error)
-    return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 })
+    return NextResponse.json({
+      success: true,
+      tickets: updatedTickets,
+      order: updatedOrder,
+      message: `${tickets.length} pase(s) aprobado(s) y QR generado(s)`,
+    })
+  } catch {
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
   }
 }
