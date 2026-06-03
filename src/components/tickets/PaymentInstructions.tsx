@@ -81,7 +81,14 @@ export default function PaymentInstructions({ orderId, paymentInfo, onReceiptUpl
 
   return (
     <div className="bg-white rounded-2xl shadow-md p-6 space-y-5">
-      <h2 className="text-xl font-bold text-gray-900">Instrucciones de pago</h2>
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">Instrucciones de pago</h2>
+        <div className="mt-2 text-sm text-gray-600 space-y-1">
+          <p>1. Transferir a la cuenta que se te indica abajo.</p>
+          <p>2. Subir el comprobante en la sección correspondiente.</p>
+          <p>3. Toca el botón de ya pagué.</p>
+        </div>
+      </div>
 
       {/* Datos de transferencia */}
       <div className="bg-gray-50 rounded-xl p-4 space-y-3">
