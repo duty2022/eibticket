@@ -164,16 +164,9 @@ export default function OrderActions({ order }: Props) {
     setError(null)
 
     try {
-      // Simplificar: Obtener sesión actual sin forzar refrescos complejos
+      // Obtener sesión actual sin validaciones bloqueantes en el cliente
       const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        setError('No hay una sesión activa. Por favor, reingresá al sistema.')
-        setLoading(null)
-        return
-      }
-      
-      const token = session.access_token
+      const token = session?.access_token
 
       const res = await fetch(`/api/orders/${order.id}/approve`, {
         method: 'POST',
