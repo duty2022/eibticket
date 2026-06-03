@@ -15,10 +15,10 @@ export default function OrderActions({ order }: Props) {
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
 
-  // Pantalla de éxito (cuando la orden ya está aprobada)
-  // Se muestra como un overlay de pantalla completa para simular el cambio de pantalla
-  if (order.status === 'approved') {
+  // Pantalla de éxito (solo se muestra inmediatamente después de aprobar)
+  if (showSuccess) {
     const orderUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/order/${order.id}`
     const message = `¡Hola ${order.buyer_name}! 👋 Tu pago para *${order.event.title}* ha sido aprobado. Acá tenés tus pases QR: ${orderUrl}`
     const phone = order.buyer_phone?.replace(/\D/g, '')
@@ -27,52 +27,85 @@ export default function OrderActions({ order }: Props) {
       : null
 
     return (
-      <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm shadow-green-100">
-          <CheckCircle className="w-12 h-12 text-green-600" />
-        </div>
-        
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">¡Orden Aprobada!</h1>
-        <p className="text-gray-500 mb-8 max-w-sm">
-          El pago fue verificado correctamente y los tickets ya están generados.
-        </p>
-        
-        <div className="w-full max-w-sm space-y-3">
-          {whatsappUrl && (
+      <div className="fixed inset-0 z-50 bg-white flex flex-col p-6 overflow-y-auto animate-in fade-in zoom-in duration-300">
+        <div className="flex-1 flex flex-col items-center justify-center max-w-sm mx-auto w-full py-10">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-sm shadow-green-100">
+            <CheckCircle className="w-12 h-12 text-green-600" />
+          </div>
+          
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">¡Orden Aprobada!</h1>
+          <p className="text-gray-500 mb-8 text-center">
+            Se generaron {order.tickets?.length} pases QR para {order.buyer_name}.
+          </p>
+          
+          {/* Visualización de tickets */}
+          <div className="w-full space-y-3 mb-8">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Pases generados</p>
+            {order.tickets?.map((t: any, i: number) => (
+              <div key={t.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center justify-between">
+                <div className="min-w-0">
+                  <p className="font-bold text-sm text-gray-900 truncate">{t.attendee_name || `Pase ${i+1}`}</p>
+                  <p className="text-[10px] text-gray-400 font-mono truncate">{t.qr_code}</p>
+                </div>
+                <div className="flex-shrink-0 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-full">
+                  VÁLIDO
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="w-full space-y-3">
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-3 w-full py-4 bg-[#25D366] text-white font-bold rounded-2xl hover:bg-[#128C7E] transition shadow-lg shadow-green-100"
+              >
+                <Phone className="w-5 h-5" />
+                Enviar todo por WhatsApp
+              </a>
+            )}
+            
             <a
-              href={whatsappUrl}
+              href={orderUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-3 w-full py-4 bg-[#25D366] text-white font-bold rounded-2xl hover:bg-[#128C7E] transition shadow-lg shadow-green-100"
+              className="flex items-center justify-center gap-3 w-full py-4 bg-blue-50 text-blue-600 font-bold rounded-2xl hover:bg-blue-100 transition"
             >
-              <Phone className="w-5 h-5" />
-              Enviar por WhatsApp
+              <ExternalLink className="w-5 h-5" />
+              Ver pases del cliente
             </a>
-          )}
-          
-          <a
-            href={orderUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 w-full py-4 bg-blue-50 text-blue-600 font-bold rounded-2xl hover:bg-blue-100 transition"
-          >
-            <ExternalLink className="w-5 h-5" />
-            Ver QR generado
-          </a>
-          
-          <button
-            onClick={() => router.push('/admin/ordenes')}
-            className="w-full py-3 text-gray-400 font-medium hover:text-gray-600 transition mt-4"
-          >
-            Volver al listado
-          </button>
+            
+            <button
+              onClick={() => setShowSuccess(false)}
+              className="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl hover:bg-gray-800 transition"
+            >
+              Ver detalles de la orden
+            </button>
+
+            <button
+              onClick={() => router.push('/admin/ordenes')}
+              className="w-full py-3 text-gray-400 font-medium hover:text-gray-600 transition mt-4"
+            >
+              Volver al listado
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
   if (order.status !== 'reviewing' && order.status !== 'pending') {
-    return null
+    return (
+      <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 text-center">
+        <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-3" />
+        <p className="text-sm font-medium text-gray-500">
+          Esta orden ya está <span className="font-bold uppercase text-green-600">Aprobada</span>
+        </p>
+        <p className="text-xs text-gray-400 mt-1">Los tickets ya fueron generados y el stock actualizado.</p>
+      </div>
+    )
   }
 
   const handleApprove = async () => {
@@ -97,6 +130,7 @@ export default function OrderActions({ order }: Props) {
       }
 
       // Refresh server data to trigger the success screen
+      setShowSuccess(true)
       router.refresh()
     } catch (err) {
       setError('Error de conexión al aprobar')
