@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Tikzet — Tickets para tus eventos',
+  title: 'EIbTicket — Pases para tus eventos',
   description: 'Comprá tus tickets de forma rápida y segura',
   manifest: '/manifest.json',
   themeColor: '#2563eb',
