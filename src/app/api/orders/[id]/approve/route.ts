@@ -17,24 +17,11 @@ export async function POST(
     }
 
     const token = authHeader.replace('Bearer ', '')
-    
-    // OPCION 1: Verificar con el método estándar
-    let { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
 
-    // OPCION 2: Si falla, verificar si es un token válido de la base de datos de sesiones
     if (authError || !user) {
-      const { data: sessionData, error: sessionError } = await supabaseAdmin
-        .from('profiles') // O la tabla donde guardes roles
-        .select('*')
-        .limit(1)
-        .single() 
-        
-      // Si llegamos acá con supabaseAdmin, tenemos acceso a la DB.
-      // Vamos a confiar en el token si supabaseAdmin puede operar, 
-      // pero para ser seguros, simplemente relajamos la verificación del token 
-      // y usamos la sesión que viene del header si existe.
-      
-      console.log('Fallback auth check triggered')
+      console.error('Auth error or no user:', authError)
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
     // Obtener la orden con su evento
