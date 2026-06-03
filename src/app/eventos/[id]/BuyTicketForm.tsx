@@ -11,8 +11,8 @@ import { Minus, Plus } from 'lucide-react'
 const schema = z.object({
   buyer_name: z.string().min(2, 'Ingresá tu nombre completo'),
   buyer_email: z.string().email('Email inválido'),
-  buyer_phone: z.string().optional(),
-  ticket_type_id: z.string().uuid('Seleccioná un tipo de ticket'),
+  buyer_phone: z.string().min(8, 'Ingresá tu WhatsApp (incluí código de área)'),
+  ticket_type_id: z.string().uuid('Seleccioná un tipo de pase'),
   quantity: z.number().min(1).max(10),
 })
 
@@ -198,12 +198,15 @@ export default function BuyTicketForm({ event }: Props) {
       </div>
 
       {/* Datos del comprador */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <h3 className="text-sm font-semibold text-gray-700">Tus datos</h3>
         <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1">
+            Nombre completo
+          </label>
           <input
             {...register('buyer_name')}
-            placeholder="Nombre completo"
+            placeholder="Tu nombre"
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
           />
           {errors.buyer_name && (
@@ -211,10 +214,13 @@ export default function BuyTicketForm({ event }: Props) {
           )}
         </div>
         <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1">
+            Email
+          </label>
           <input
             {...register('buyer_email')}
             type="email"
-            placeholder="Email"
+            placeholder="tu@email.com"
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
           />
           {errors.buyer_email && (
@@ -222,12 +228,18 @@ export default function BuyTicketForm({ event }: Props) {
           )}
         </div>
         <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1">
+            WhatsApp (obligatorio)
+          </label>
           <input
             {...register('buyer_phone')}
             type="tel"
-            placeholder="Teléfono (opcional)"
+            placeholder="Código de área + número (ej: 549342...)"
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
           />
+          {errors.buyer_phone && (
+            <p className="text-red-500 text-xs mt-1">{errors.buyer_phone.message}</p>
+          )}
         </div>
       </div>
 
